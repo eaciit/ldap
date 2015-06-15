@@ -85,7 +85,7 @@ func (req *AddRequest) AddAttribute(attr *EntryAttribute) {
 	req.Entry.AddAttributeValues(attr.Name, attr.Values)
 }
 
-func (req *AddRequest) AddAttributes(attrs []EntryAttribute) {
+func (req *AddRequest) AddAttributes(attrs []*EntryAttribute) {
 	for _, attr := range attrs {
 		req.Entry.AddAttributeValues(attr.Name, attr.Values)
 	}
