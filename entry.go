@@ -32,6 +32,10 @@ func NewEntry(dn string) *Entry {
 // AddAttributeValue - Add a single Attr value
 // no check is done for duplicate values.
 func (e *Entry) AddAttributeValue(attributeName, value string) {
+	// Don't add empty values.
+	if value == "" {
+		return
+	}
 	index := e.GetAttributeIndex(attributeName)
 	if index == -1 {
 		eAttr := EntryAttribute{Name: attributeName, Values: []string{value}}
@@ -44,6 +48,9 @@ func (e *Entry) AddAttributeValue(attributeName, value string) {
 // AddAttributeValues - Add via a name and slice of values
 // no check is done for duplicate values.
 func (e *Entry) AddAttributeValues(attributeName string, values []string) {
+	if len(values) == 0 {
+		return
+	}
 	index := e.GetAttributeIndex(attributeName)
 	if index == -1 {
 		eAttr := &EntryAttribute{Name: attributeName, Values: values}
