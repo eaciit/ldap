@@ -43,7 +43,7 @@ func (l *LDAPConnection) sendReqRespPacket(messageID uint64, packet *ber.Packet)
 	}
 
 	if channel == nil {
-		return NewLDAPError(ErrorNetwork, "Could not send message")
+		return newError(ErrorNetwork, "Could not send message")
 	}
 
 	defer l.finishMessage(messageID)
@@ -62,17 +62,17 @@ func (l *LDAPConnection) sendReqRespPacket(messageID uint64, packet *ber.Packet)
 	select {
 	case responsePacket, ok = <-channel:
 		if !ok {
-			return NewLDAPError(ErrorClosing, "Response Channel Closed")
+			return newError(ErrorClosing, "Response Channel Closed")
 		}
 	case <-time.After(timeout):
 		if l.AbandonMessageOnReadTimeout {
 			err = l.Abandon(messageID)
 			if err != nil {
-				return NewLDAPError(ErrorNetwork,
+				return newError(ErrorNetwork,
 					"Timeout waiting for Message and error on Abandon")
 			}
 		}
-		return NewLDAPError(ErrorNetwork, "Timeout waiting for Message")
+		return newError(ErrorNetwork, "Timeout waiting for Message")
 	}
 
 	if l.Debug {
@@ -80,7 +80,7 @@ func (l *LDAPConnection) sendReqRespPacket(messageID uint64, packet *ber.Packet)
 	}
 
 	if responsePacket == nil {
-		return NewLDAPError(ErrorNetwork, "Could not retrieve message")
+		return newError(ErrorNetwork, "Could not retrieve message")
 	}
 
 	if l.Debug {
@@ -90,10 +90,10 @@ func (l *LDAPConnection) sendReqRespPacket(messageID uint64, packet *ber.Packet)
 		ber.PrintPacket(responsePacket)
 	}
 
-	result_code, result_description := getLDAPResultCode(responsePacket)
+	result_code, result_description := getResultCode(responsePacket)
 
 	if result_code != 0 {
-		return NewLDAPError(result_code, result_description)
+		return newError(result_code, result_description)
 	}
 
 	if l.Debug {

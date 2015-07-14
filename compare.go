@@ -28,7 +28,7 @@ type CompareRequest struct {
 func (l *LDAPConnection) Compare(req *CompareRequest) (bool, error) {
 	messageID, ok := l.nextMessageID()
 	if !ok {
-		return false, NewLDAPError(ErrorClosing, "MessageID channel is closed.")
+		return false, newError(ErrorClosing, "MessageID channel is closed.")
 	}
 
 	encodedCompare, err := encodeCompareRequest(req)
@@ -44,8 +44,8 @@ func (l *LDAPConnection) Compare(req *CompareRequest) (bool, error) {
 	// CompareTrue = 6, CompareFalse = 5
 	// returns an "Error"
 	err = l.sendReqRespPacket(messageID, packet)
-	if lerr, ok := err.(*LDAPError); ok {
-		return lerr.ResultCode == LDAPResultCompareTrue, nil
+	if lerr, ok := err.(*Error); ok {
+		return lerr.ResultCode == ResultCompareTrue, nil
 	} else {
 		return false, err
 	}
@@ -53,7 +53,7 @@ func (l *LDAPConnection) Compare(req *CompareRequest) (bool, error) {
 }
 
 func encodeCompareRequest(req *CompareRequest) (*ber.Packet, error) {
-	p := ber.Encode(ber.ClassApplication, ber.TypeConstructed, ApplicationCompareRequest, nil, ApplicationMap[ApplicationCompareRequest])
+	p := ber.Encode(ber.ClassApplication, ber.TypeConstructed, uint8(ApplicationCompareRequest), nil, ApplicationCompareRequest.String())
 	p.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimative, ber.TagOctetString, req.DN, "LDAP DN"))
 	ava, err := encodeItem([]string{req.Name, "=", req.Value})
 	if err != nil {

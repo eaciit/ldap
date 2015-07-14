@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// This package provides LDAP MatchingRule functions.
 package ldap
 
 // At the moment just helper values for ServerSideSorting.

@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// This package provides LDAP client functions.
 package ldap
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"github.com/mavricknz/asn1-ber"
 	"net"
@@ -141,11 +141,11 @@ func (l *LDAPConnection) nextMessageID() (messageID uint64, ok bool) {
 func (l *LDAPConnection) startTLS() error {
 	messageID, ok := l.nextMessageID()
 	if !ok {
-		return NewLDAPError(ErrorClosing, "MessageID channel is closed.")
+		return newError(ErrorClosing, "MessageID channel is closed.")
 	}
 
 	if l.IsSSL {
-		return NewLDAPError(ErrorNetwork, "Already encrypted")
+		return newError(ErrorNetwork, "Already encrypted")
 	}
 
 	tlsRequest := encodeTLSRequest()
@@ -172,7 +172,7 @@ func (l *LDAPConnection) startTLS() error {
 }
 
 func encodeTLSRequest() (tlsRequest *ber.Packet) {
-	tlsRequest = ber.Encode(ber.ClassApplication, ber.TypeConstructed, ApplicationExtendedRequest, nil, "Start TLS")
+	tlsRequest = ber.Encode(ber.ClassApplication, ber.TypeConstructed, uint8(ApplicationExtendedRequest), nil, "Start TLS")
 	tlsRequest.AppendChild(ber.NewString(ber.ClassContext, ber.TypePrimative, 0, "1.3.6.1.4.1.1466.20037", "TLS Extended Command"))
 	return
 }
@@ -198,12 +198,12 @@ func (l *LDAPConnection) getNewResultChannel(message_id uint64) (out chan *ber.P
 	defer l.lockChanResults.Unlock()
 
 	if l.chanResults == nil {
-		return nil, NewLDAPError(ErrorClosing, "Connection closing/closed")
+		return nil, newError(ErrorClosing, "Connection closing/closed")
 	}
 
 	if _, ok := l.chanResults[message_id]; ok {
 		errStr := fmt.Sprintf("chanResults already allocated, message_id: %d", message_id)
-		return nil, NewLDAPError(ErrorUnknown, errStr)
+		return nil, newError(ErrorUnknown, errStr)
 	}
 
 	out = make(chan *ber.Packet, ResultChanBufferSize)
@@ -212,7 +212,10 @@ func (l *LDAPConnection) getNewResultChannel(message_id uint64) (out chan *ber.P
 }
 
 func (l *LDAPConnection) sendMessage(p *ber.Packet) (out chan *ber.Packet, err error) {
-	message_id := p.Children[0].Value.(uint64)
+	message_id, ok := p.Children[0].Value.(uint64)
+	if !ok {
+		return nil, errors.New(fmt.Sprintf("type assertion uint64 for %v failed!", p.Children[0].Value))
+	}
 	// sendProcessMessage may not process a message on shutdown
 	// getNewResultChannel adds id/chan to chan results
 	out, err = l.getNewResultChannel(message_id)
@@ -323,7 +326,12 @@ func (l *LDAPConnection) reader() {
 
 		addLDAPDescriptions(p)
 
-		message_id := p.Children[0].Value.(uint64)
+		message_id, ok := p.Children[0].Value.(uint64)
+		if !ok {
+			// type assertion failed.. maybe we better stop
+			return
+		}
+
 		message_packet := &messagePacket{Op: MessageResponse, MessageID: message_id, Packet: p}
 
 		l.readerToChanResults(message_packet)

@@ -2,75 +2,24 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// This package provides LDAP client functions.
 package ldap
 
 import (
+	"errors"
 	"fmt"
 	"github.com/mavricknz/asn1-ber"
+	"log"
 )
-
-const (
-	ControlTypeMatchedValuesRequest    = "1.2.826.0.1.3344810.2.3"
-	ControlTypePermissiveModifyRequest = "1.2.840.113556.1.4.1413"
-	ControlTypePaging                  = "1.2.840.113556.1.4.319"
-	ControlTypeManageDsaITRequest      = "2.16.840.1.113730.3.4.2"
-	ControlTypeSubtreeDeleteRequest    = "1.2.840.113556.1.4.805"
-	ControlTypeNoOpRequest             = "1.3.6.1.4.1.4203.1.10.2"
-	ControlTypeServerSideSortRequest   = "1.2.840.113556.1.4.473"
-	ControlTypeServerSideSortResponse  = "1.2.840.113556.1.4.474"
-	ControlTypeVlvRequest              = "2.16.840.1.113730.3.4.9"
-	ControlTypeVlvResponse             = "2.16.840.1.113730.3.4.10"
-
-//1.2.840.113556.1.4.473
-//1.3.6.1.1.12
-//1.3.6.1.1.13.1
-//1.3.6.1.1.13.2
-//1.3.6.1.4.1.26027.1.5.2
-//1.3.6.1.4.1.42.2.27.8.5.1
-//1.3.6.1.4.1.42.2.27.9.5.2
-//1.3.6.1.4.1.42.2.27.9.5.8
-//1.3.6.1.4.1.4203.1.10.1
-//1.3.6.1.4.1.7628.5.101.1
-//2.16.840.1.113730.3.4.12
-//2.16.840.1.113730.3.4.16
-//2.16.840.1.113730.3.4.17
-//2.16.840.1.113730.3.4.18
-//2.16.840.1.113730.3.4.19
-//2.16.840.1.113730.3.4.3
-//2.16.840.1.113730.3.4.4
-//2.16.840.1.113730.3.4.5
-//
-)
-
-var ControlTypeMap = map[string]string{
-	ControlTypeMatchedValuesRequest:    "MatchedValuesRequest",
-	ControlTypePermissiveModifyRequest: "PermissiveModifyRequest",
-	ControlTypePaging:                  "Paging",
-	ControlTypeManageDsaITRequest:      "ManageDsaITRequest",
-	ControlTypeSubtreeDeleteRequest:    "SubtreeDeleteRequest",
-	ControlTypeNoOpRequest:             "NoOpRequest",
-	ControlTypeServerSideSortRequest:   "ServerSideSortRequest",
-	ControlTypeServerSideSortResponse:  "ServerSideSortResponse",
-	ControlTypeVlvRequest:              "VlvRequest",
-	ControlTypeVlvResponse:             "VlvResponse",
-}
-
-var ControlDecodeMap = map[string]func(p *ber.Packet) (Control, error){
-	ControlTypeServerSideSortResponse: NewControlServerSideSortResponse,
-	ControlTypePaging:                 NewControlPagingFromPacket,
-	ControlTypeVlvResponse:            NewControlVlvResponse,
-}
 
 // Control Interface
 type Control interface {
 	Encode() (*ber.Packet, error)
-	GetControlType() string
+	GetControlType() ControlType
 	String() string
 }
 
 type ControlString struct {
-	ControlType  string
+	ControlType  ControlType
 	Criticality  bool
 	ControlValue string
 }
@@ -84,13 +33,13 @@ func NewControlStringFromPacket(p *ber.Packet) (Control, error) {
 	return c, nil
 }
 
-func (c *ControlString) GetControlType() string {
+func (c *ControlString) GetControlType() ControlType {
 	return c.ControlType
 }
 
 func (c *ControlString) Encode() (p *ber.Packet, err error) {
 	p = ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "Control")
-	p.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimative, ber.TagOctetString, c.ControlType, "Control Type ("+ControlTypeMap[c.ControlType]+")"))
+	p.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimative, ber.TagOctetString, string(c.ControlType), fmt.Sprintf("Control Type (%v)", c.ControlType)))
 	if c.Criticality {
 		p.AppendChild(ber.NewBoolean(ber.ClassUniversal, ber.TypePrimative, ber.TagBoolean, c.Criticality, "Criticality"))
 	}
@@ -101,7 +50,7 @@ func (c *ControlString) Encode() (p *ber.Packet, err error) {
 }
 
 func (c *ControlString) String() string {
-	return fmt.Sprintf("Control Type: %s (%q)  Criticality: %t  Control Value: %s", ControlTypeMap[c.ControlType], c.ControlType, c.Criticality, c.ControlValue)
+	return fmt.Sprintf("Control Type: %s (%q)  Criticality: %t  Control Value: %s", c.ControlType.String(), string(c.ControlType), c.Criticality, c.ControlValue)
 }
 
 type ControlPaging struct {
@@ -128,19 +77,23 @@ func NewControlPagingFromPacket(p *ber.Packet) (Control, error) {
 	value.Description = "Search Control Value"
 	value.Children[0].Description = "Paging Size"
 	value.Children[1].Description = "Cookie"
-	c.PagingSize = uint32(value.Children[0].Value.(uint64))
+	pagingSize, ok := value.Children[0].Value.(uint64)
+	if !ok {
+		return c, errors.New(fmt.Sprintf("type assertion uint64 for %v failed!\n", p.Children[0].Value))
+	}
+	c.PagingSize = uint32(pagingSize)
 	c.Cookie = value.Children[1].Data.Bytes()
 	value.Children[1].Value = c.Cookie
 	return c, nil
 }
 
-func (c *ControlPaging) GetControlType() string {
+func (c *ControlPaging) GetControlType() ControlType {
 	return ControlTypePaging
 }
 
 func (c *ControlPaging) Encode() (p *ber.Packet, err error) {
 	p = ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "Control")
-	p.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimative, ber.TagOctetString, ControlTypePaging, "Control Type ("+ControlTypeMap[ControlTypePaging]+")"))
+	p.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimative, ber.TagOctetString, string(ControlTypePaging), fmt.Sprintf("Control Type (%v)", ControlTypePaging)))
 
 	p2 := ber.Encode(ber.ClassUniversal, ber.TypePrimative, ber.TagOctetString, nil, "Control Value (Paging)")
 	seq := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "Search Control Value")
@@ -158,8 +111,8 @@ func (c *ControlPaging) Encode() (p *ber.Packet, err error) {
 func (c *ControlPaging) String() string {
 	return fmt.Sprintf(
 		"Control Type: %s (%q)  Criticality: %t  PagingSize: %d  Cookie: %q",
-		ControlTypeMap[ControlTypePaging],
-		ControlTypePaging,
+		ControlTypePaging.String(),
+		string(ControlTypePaging),
 		false,
 		c.PagingSize,
 		c.Cookie)
@@ -169,7 +122,7 @@ func (c *ControlPaging) SetCookie(Cookie []byte) {
 	c.Cookie = Cookie
 }
 
-func FindControl(controls []Control, controlType string) (position int, control Control) {
+func FindControl(controls []Control, controlType ControlType) (position int, control Control) {
 	for pos, c := range controls {
 		if c.GetControlType() == controlType {
 			return pos, c
@@ -189,49 +142,13 @@ func ReplaceControl(controls []Control, control Control) (oldControl Control) {
 	return control
 }
 
-///*
-//Control ::= SEQUENCE {
-//             controlType             LDAPOID,
-//             criticality             BOOLEAN DEFAULT FALSE,
-//             controlValue            OCTET STRING OPTIONAL }
-//*/
-//// DecodeControl - Decode Response controls.
-//func DecodeControl(p *ber.Packet) Control {
-//	controlType, criticality, value := decodeControlTypeAndCrit(p)
-
-//	/* Special cases */
-//	switch controlType {
-//	case ControlTypePaging:
-//		value.Description += " (Paging)"
-//		c := new(ControlPaging)
-//		if value.Value != nil {
-//			value_children := ber.DecodePacket(value.Data.Bytes())
-//			value.Data.Truncate(0)
-//			value.Value = nil
-//			value.AppendChild(value_children)
-//		}
-//		value = value.Children[0]
-//		value.Description = "Search Control Value"
-//		value.Children[0].Description = "Paging Size"
-//		value.Children[1].Description = "Cookie"
-//		c.PagingSize = uint32(value.Children[0].Value.(uint64))
-//		c.Cookie = value.Children[1].Data.Bytes()
-//		value.Children[1].Value = c.Cookie
-//		return c
-//	}
-//	c := new(ControlString)
-//	c.ControlType = controlType
-//	c.Criticality = criticality
-//	c.ControlValue = value.ValueString()
-//	return c
-//}
-
-func decodeControlTypeAndCrit(p *ber.Packet) (controlType string, criticality bool, value *ber.Packet) {
-	controlType = p.Children[0].ValueString()
-	p.Children[0].Description = "Control Type (" + ControlTypeMap[controlType] + ")"
+func decodeControlTypeAndCrit(p *ber.Packet) (controlType ControlType, criticality bool, value *ber.Packet) {
+	controlType = ControlType(p.Children[0].ValueString())
+	p.Children[0].Description = fmt.Sprintf("Control Type (%v)", controlType)
 	criticality = false
 	if len(p.Children) == 3 {
-		criticality = p.Children[1].Value.(bool)
+		// at least guard against type assertion failure
+		criticality, _ = p.Children[1].Value.(bool)
 		p.Children[1].Description = "Criticality"
 		value = p.Children[2]
 	} else {
@@ -241,7 +158,7 @@ func decodeControlTypeAndCrit(p *ber.Packet) (controlType string, criticality bo
 	return
 }
 
-func NewControlString(ControlType string, Criticality bool, ControlValue string) *ControlString {
+func NewControlString(ControlType ControlType, Criticality bool, ControlValue string) *ControlString {
 	return &ControlString{
 		ControlType:  ControlType,
 		Criticality:  Criticality,
@@ -307,10 +224,10 @@ func NewControlMatchedValuesRequest(criticality bool, filter string) *ControlMat
 }
 
 func (c *ControlMatchedValuesRequest) Decode(p *ber.Packet) (*Control, error) {
-	return nil, NewLDAPError(ErrorDecoding, "Decode of Control unsupported.")
+	return nil, newError(ErrorDecoding, "Decode of Control unsupported.")
 }
 
-func (c *ControlMatchedValuesRequest) GetControlType() string {
+func (c *ControlMatchedValuesRequest) GetControlType() ControlType {
 	return ControlTypeMatchedValuesRequest
 }
 
@@ -318,8 +235,8 @@ func (c *ControlMatchedValuesRequest) Encode() (p *ber.Packet, err error) {
 	p = ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "ControlMatchedValuesRequest")
 	p.AppendChild(
 		ber.NewString(ber.ClassUniversal, ber.TypePrimative,
-			ber.TagOctetString, ControlTypeMatchedValuesRequest,
-			"Control Type ("+ControlTypeMap[ControlTypeMatchedValuesRequest]+")"))
+			ber.TagOctetString, string(ControlTypeMatchedValuesRequest),
+			fmt.Sprintf("Control Type (%v)", ControlTypeMatchedValuesRequest)))
 	if c.Criticality {
 		p.AppendChild(ber.NewBoolean(ber.ClassUniversal, ber.TypePrimative, ber.TagBoolean, c.Criticality, "Criticality"))
 	}
@@ -338,8 +255,8 @@ func (c *ControlMatchedValuesRequest) Encode() (p *ber.Packet, err error) {
 func (c *ControlMatchedValuesRequest) String() string {
 	return fmt.Sprintf(
 		"Control Type: %s (%q)  Criticality: %t  Filter: %s",
-		ControlTypeMap[ControlTypeMatchedValuesRequest],
-		ControlTypeMatchedValuesRequest,
+		ControlTypeMatchedValuesRequest.String(),
+		string(ControlTypeMatchedValuesRequest),
 		c.Criticality,
 		c.Filter,
 	)
@@ -373,10 +290,10 @@ func NewControlServerSideSortRequest(sortKeyList []ServerSideSortAttrRuleOrder, 
 }
 
 func (c *ControlServerSideSortRequest) Decode(p *ber.Packet) (*Control, error) {
-	return nil, NewLDAPError(ErrorDecoding, "Decode of Control unsupported.")
+	return nil, newError(ErrorDecoding, "Decode of Control unsupported.")
 }
 
-func (c *ControlServerSideSortRequest) GetControlType() string {
+func (c *ControlServerSideSortRequest) GetControlType() ControlType {
 	return ControlTypeServerSideSortRequest
 }
 
@@ -384,8 +301,8 @@ func (c *ControlServerSideSortRequest) Encode() (p *ber.Packet, err error) {
 	p = ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "ControlServerSideSortRequest")
 	p.AppendChild(
 		ber.NewString(ber.ClassUniversal, ber.TypePrimative,
-			ber.TagOctetString, ControlTypeServerSideSortRequest,
-			"Control Type ("+ControlTypeMap[ControlTypeServerSideSortRequest]+")"))
+			ber.TagOctetString, string(ControlTypeServerSideSortRequest),
+			fmt.Sprintf("Control Type (%v)", ControlTypeServerSideSortRequest)))
 	if c.Criticality {
 		p.AppendChild(ber.NewBoolean(ber.ClassUniversal, ber.TypePrimative, ber.TagBoolean, c.Criticality, "Criticality"))
 	}
@@ -415,8 +332,8 @@ func (c *ControlServerSideSortRequest) Encode() (p *ber.Packet, err error) {
 func (c *ControlServerSideSortRequest) String() string {
 	ctext := fmt.Sprintf(
 		"Control Type: %s (%q)  Criticality: %t, SortKeys: ",
-		ControlTypeMap[ControlTypeServerSideSortRequest],
-		ControlTypeServerSideSortRequest,
+		ControlTypeServerSideSortRequest.String(),
+		string(ControlTypeServerSideSortRequest),
 		c.Criticality,
 	)
 	for _, sortKey := range c.SortKeyList {
@@ -460,8 +377,8 @@ func (c *ControlVlvRequest) Encode() (*ber.Packet, error) {
 	p := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "ControlVlvRequest")
 	p.AppendChild(
 		ber.NewString(ber.ClassUniversal, ber.TypePrimative,
-			ber.TagOctetString, ControlTypeVlvRequest,
-			"Control Type ("+ControlTypeMap[ControlTypeVlvRequest]+")"))
+			ber.TagOctetString, string(ControlTypeVlvRequest),
+			fmt.Sprintf("Control Type (%v)", ControlTypeVlvRequest)))
 	if c.Criticality {
 		p.AppendChild(ber.NewBoolean(ber.ClassUniversal, ber.TypePrimative, ber.TagBoolean, c.Criticality, "Criticality"))
 	}
@@ -483,7 +400,7 @@ func (c *ControlVlvRequest) Encode() (*ber.Packet, error) {
 		target = ber.NewString(ber.ClassContext, ber.TypePrimative, 1, c.GreaterThanOrEqual, "GreaterThanOrEqual")
 	}
 	if target == nil {
-		return nil, NewLDAPError(ErrorEncoding, "VLV target equal to nil")
+		return nil, newError(ErrorEncoding, "VLV target equal to nil")
 	}
 	vlvSeq.AppendChild(beforeCount)
 	vlvSeq.AppendChild(afterCount)
@@ -507,15 +424,15 @@ func (c *ControlVlvRequest) Encode() (*ber.Packet, error) {
 }
 
 func (c *ControlVlvRequest) GetControlType() string {
-	return ControlTypeMap[ControlTypeVlvRequest]
+	return ControlTypeVlvRequest.String()
 }
 
 func (c *ControlVlvRequest) String() string {
 	ctext := fmt.Sprintf(
 		"Control Type: %s (%q)  Criticality: %t, BeforeCount: %d, AfterCount: %d"+
 			", ByOffset.Offset: %d, ByOffset.ContentCount: %d, GreaterThanOrEqual: %s",
-		ControlTypeMap[ControlTypeVlvRequest],
-		ControlTypeVlvRequest,
+		ControlTypeVlvRequest.String(),
+		string(ControlTypeVlvRequest),
 		c.Criticality, c.BeforeCount, c.AfterCount, c.ByOffset.Offset,
 		c.ByOffset.ContentCount, c.GreaterThanOrEqual,
 	)
@@ -575,8 +492,11 @@ func NewControlServerSideSortResponse(p *ber.Packet) (Control, error) {
 	value.Description = "ServerSideSortResponse Control Value"
 
 	value.Children[0].Description = "SortResult"
-	errNum := uint8(value.Children[0].Value.(uint64))
-	c.Err = NewLDAPError(errNum, "")
+	errNum, ok := value.Children[0].Value.(ResultCode)
+	if !ok {
+		return c, errors.New(fmt.Sprintf("type assertion ResultCode for %v failed!", p.Children[0].Value))
+	}
+	c.Err = newError(errNum, "")
 
 	if len(value.Children) == 2 {
 		value.Children[1].Description = "Attribute Name"
@@ -587,20 +507,24 @@ func NewControlServerSideSortResponse(p *ber.Packet) (Control, error) {
 }
 
 func (c *ControlServerSideSortResponse) Encode() (p *ber.Packet, err error) {
-	return nil, NewLDAPError(ErrorEncoding, "Encode of Control unsupported.")
+	return nil, newError(ErrorEncoding, "Encode of Control unsupported.")
 }
 
-func (c *ControlServerSideSortResponse) GetControlType() string {
+func (c *ControlServerSideSortResponse) GetControlType() ControlType {
 	return ControlTypeServerSideSortResponse
 }
 
 func (c *ControlServerSideSortResponse) String() string {
+	err, ok := c.Err.(*Error)
+	if !ok {
+		err = &Error{}
+	}
 	return fmt.Sprintf("Control Type: %s (%q)  Criticality: %t, AttributeName: %s, ErrorValue: %d",
-		ControlTypeMap[ControlTypeServerSideSortResponse],
-		ControlTypeServerSideSortResponse,
+		ControlTypeServerSideSortResponse.String(),
+		string(ControlTypeServerSideSortResponse),
 		c.Criticality,
 		c.AttributeName,
-		c.Err.(*LDAPError).ResultCode,
+		err.ResultCode,
 	)
 }
 
@@ -654,11 +578,22 @@ func NewControlVlvResponse(p *ber.Packet) (Control, error) {
 	value.Children[1].Description = "ContentCount"
 	value.Children[2].Description = "VirtualListViewResult/Err"
 
-	c.TargetPosition = value.Children[0].Value.(uint64)
-	c.ContentCount = value.Children[1].Value.(uint64)
+	var ok bool
+	c.TargetPosition, ok = value.Children[0].Value.(uint64)
+	if !ok {
+		return c, errors.New(fmt.Sprintf("type assertion uint64 for %v failed!", p.Children[0].Value))
+	}
+	c.ContentCount, ok = value.Children[1].Value.(uint64)
+	if !ok {
+		return c, errors.New(fmt.Sprintf("type assertion uint64 for %v failed!", p.Children[1].Value))
+	}
 
-	errNum := uint8(value.Children[2].Value.(uint64))
-	c.Err = NewLDAPError(errNum, "")
+	errNum, ok := value.Children[2].Value.(ResultCode)
+	if !ok {
+		log.Println("type assertion failed in control.go")
+		errNum = 212
+	}
+	c.Err = newError(errNum, "")
 
 	if len(value.Children) == 4 {
 		value.Children[3].Description = "ContextID"
@@ -669,21 +604,25 @@ func NewControlVlvResponse(p *ber.Packet) (Control, error) {
 }
 
 func (c *ControlVlvResponse) Encode() (p *ber.Packet, err error) {
-	return nil, NewLDAPError(ErrorEncoding, "Encode of Control unsupported.")
+	return nil, newError(ErrorEncoding, "Encode of Control unsupported.")
 }
 
-func (c *ControlVlvResponse) GetControlType() string {
+func (c *ControlVlvResponse) GetControlType() ControlType {
 	return ControlTypeVlvResponse
 }
 
 func (c *ControlVlvResponse) String() string {
+	err, ok := c.Err.(*Error)
+	if !ok {
+		err = &Error{}
+	}
 	return fmt.Sprintf("Control Type: %s (%q)  Criticality: %t, TargetPosition: %d, ContentCount: %d, ErrorValue: %d, ContextID: %s",
-		ControlTypeMap[ControlTypeVlvResponse],
 		ControlTypeVlvResponse,
+		string(ControlTypeVlvResponse),
 		c.Criticality,
 		c.TargetPosition,
 		c.ContentCount,
-		c.Err.(*LDAPError).ResultCode,
+		err.ResultCode,
 		c.ContextID,
 	)
 }

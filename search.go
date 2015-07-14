@@ -2,46 +2,14 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// File contains Search functionality
 package ldap
 
 import (
+	"errors"
 	"fmt"
 	"github.com/mavricknz/asn1-ber"
 	"log"
 )
-
-const (
-	ScopeBaseObject   = 0
-	ScopeSingleLevel  = 1
-	ScopeWholeSubtree = 2
-)
-
-var ScopeMap = map[int]string{
-	ScopeBaseObject:   "Base Object",
-	ScopeSingleLevel:  "Single Level",
-	ScopeWholeSubtree: "Whole Subtree",
-}
-
-const (
-	NeverDerefAliases   = 0
-	DerefInSearching    = 1
-	DerefFindingBaseObj = 2
-	DerefAlways         = 3
-)
-
-const (
-	SearchResultEntry     = ApplicationSearchResultEntry
-	SearchResultReference = ApplicationSearchResultReference
-	SearchResultDone      = ApplicationSearchResultDone
-)
-
-var DerefMap = map[int]string{
-	NeverDerefAliases:   "NeverDerefAliases",
-	DerefInSearching:    "DerefInSearching",
-	DerefFindingBaseObj: "DerefFindingBaseObj",
-	DerefAlways:         "DerefAlways",
-}
 
 type SearchResult struct {
 	Entries   []*Entry
@@ -50,7 +18,7 @@ type SearchResult struct {
 }
 
 type DiscreteSearchResult struct {
-	SearchResultType uint8
+	SearchResultType SearchResultType
 	Entry            *Entry
 	Referrals        []string
 	Controls         []Control
@@ -68,8 +36,8 @@ type SearchResultHandler interface {
 // SearchRequest passed to Search functions.
 type SearchRequest struct {
 	BaseDN       string
-	Scope        int
-	DerefAliases int
+	Scope        Scope
+	DerefAliases Deref
 	SizeLimit    int
 	TimeLimit    int
 	TypesOnly    bool
@@ -86,12 +54,7 @@ type SearchRequest struct {
 //	TimeLimit:    0
 //	TypesOnly:    false
 //	Controls:     nil
-func NewSimpleSearchRequest(
-	BaseDN string,
-	Scope int,
-	Filter string,
-	Attributes []string,
-) *SearchRequest {
+func NewSimpleSearchRequest(BaseDN string, Scope Scope, Filter string, Attributes []string) *SearchRequest {
 	return &SearchRequest{
 		BaseDN:       BaseDN,
 		Scope:        Scope,
@@ -105,14 +68,7 @@ func NewSimpleSearchRequest(
 	}
 }
 
-func NewSearchRequest(
-	BaseDN string,
-	Scope, DerefAliases, SizeLimit, TimeLimit int,
-	TypesOnly bool,
-	Filter string,
-	Attributes []string,
-	Controls []Control,
-) *SearchRequest {
+func NewSearchRequest(BaseDN string, Scope Scope, DerefAliases Deref, SizeLimit, TimeLimit int, TypesOnly bool, Filter string, Attributes []string, Controls []Control) *SearchRequest {
 	return &SearchRequest{
 		BaseDN:       BaseDN,
 		Scope:        Scope,
@@ -156,9 +112,13 @@ func (l *LDAPConnection) SearchWithPaging(searchRequest *SearchRequest, pagingSi
 			}
 			return allResults, nil
 		} else if pagingResponsePacket == nil {
-			return allResults, NewLDAPError(ErrorMissingControl, "Expected paging Control, it was not found.")
+			return allResults, newError(ErrorMissingControl, "Expected paging Control, it was not found.")
 		}
-		pagingControl.SetCookie(pagingResponsePacket.(*ControlPaging).Cookie)
+		control, ok := pagingResponsePacket.(*ControlPaging)
+		if !ok {
+			return allResults, errors.New(fmt.Sprintf("type assertion *ControlPaging for %v failed!", pagingResponsePacket))
+		}
+		pagingControl.SetCookie(control.Cookie)
 		if len(pagingControl.Cookie) == 0 {
 			break
 		}
@@ -197,7 +157,7 @@ func (l *LDAPConnection) Search(searchRequest *SearchRequest) (*SearchResult, er
 }
 
 func encodeSearchRequest(req *SearchRequest) (*ber.Packet, error) {
-	searchRequest := ber.Encode(ber.ClassApplication, ber.TypeConstructed, ApplicationSearchRequest, nil, "Search Request")
+	searchRequest := ber.Encode(ber.ClassApplication, ber.TypeConstructed, uint8(ApplicationSearchRequest), nil, "Search Request")
 	searchRequest.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimative, ber.TagOctetString, req.BaseDN, "Base DN"))
 	searchRequest.AppendChild(ber.NewInteger(ber.ClassUniversal, ber.TypePrimative, ber.TagEnumerated, uint64(req.Scope), "Scope"))
 	searchRequest.AppendChild(ber.NewInteger(ber.ClassUniversal, ber.TypePrimative, ber.TagEnumerated, uint64(req.DerefAliases), "Deref Aliases"))
@@ -228,7 +188,7 @@ func (req *SearchRequest) AddControl(control Control) {
 // SearchResult decoded to Entry,Controls,Referral
 func decodeSearchResponse(packet *ber.Packet) (discreteSearchResult *DiscreteSearchResult, err error) {
 	discreteSearchResult = new(DiscreteSearchResult)
-	switch packet.Children[1].Tag {
+	switch SearchResultType(packet.Children[1].Tag) {
 	case SearchResultEntry:
 		discreteSearchResult.SearchResultType = SearchResultEntry
 		entry := new(Entry)
@@ -245,22 +205,21 @@ func decodeSearchResponse(packet *ber.Packet) (discreteSearchResult *DiscreteSea
 		return discreteSearchResult, nil
 	case SearchResultDone:
 		discreteSearchResult.SearchResultType = SearchResultDone
-		result_code, result_description := getLDAPResultCode(packet)
-		if result_code != 0 {
-			return discreteSearchResult, NewLDAPError(result_code, result_description)
+		resultCode, result_description := getResultCode(packet)
+		if resultCode != 0 {
+			return discreteSearchResult, newError(ResultCode(resultCode), result_description)
 		}
 
 		if len(packet.Children) == 3 {
 			controls := make([]Control, 0)
 			for _, child := range packet.Children[2].Children {
 				// child.Children[0].ValueString() = control oid
-				decodeFunc, present := ControlDecodeMap[child.Children[0].ValueString()]
-				if present {
+				decodeFunc, err := ControlType(child.Children[0].ValueString()).function()
+				if err != nil {
+					log.Println("Couldn't decode Control : " + child.Children[0].ValueString())
+				} else {
 					c, _ := decodeFunc(child)
 					controls = append(controls, c)
-				} else {
-					// not fatal but definately a warning
-					log.Println("Couldn't decode Control : " + child.Children[0].ValueString())
 				}
 			}
 			discreteSearchResult.Controls = controls
@@ -273,7 +232,7 @@ func decodeSearchResponse(packet *ber.Packet) (discreteSearchResult *DiscreteSea
 		}
 		return discreteSearchResult, nil
 	}
-	return nil, NewLDAPError(ErrorDecoding, "Couldn't decode search result.")
+	return nil, newError(ErrorDecoding, "Couldn't decode search result.")
 }
 
 func sendError(errChannel chan<- error, err error) error {
@@ -297,7 +256,7 @@ func (l *LDAPConnection) SearchWithHandler(
 ) error {
 	messageID, ok := l.nextMessageID()
 	if !ok {
-		err := NewLDAPError(ErrorClosing, "MessageID channel is closed.")
+		err := newError(ErrorClosing, "MessageID channel is closed.")
 		return sendError(errorChan, err)
 	}
 
@@ -322,7 +281,7 @@ func (l *LDAPConnection) SearchWithHandler(
 		return sendError(errorChan, err)
 	}
 	if channel == nil {
-		err = NewLDAPError(ErrorNetwork, "Could not send message")
+		err = newError(ErrorNetwork, "Could not send message")
 		return sendError(errorChan, err)
 	}
 	defer l.finishMessage(messageID)
@@ -343,11 +302,11 @@ func (l *LDAPConnection) SearchWithHandler(
 		}
 
 		if !ok {
-			return NewLDAPError(ErrorClosing, "Response Channel Closed")
+			return newError(ErrorClosing, "Response Channel Closed")
 		}
 
 		if packet == nil {
-			err = NewLDAPError(ErrorNetwork, "Could not retrieve message")
+			err = newError(ErrorNetwork, "Could not retrieve message")
 			return sendError(errorChan, err)
 		}
 

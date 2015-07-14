@@ -24,9 +24,9 @@ Simple delete
 func (l *LDAPConnection) Delete(delReq *DeleteRequest) (error error) {
 	messageID, ok := l.nextMessageID()
 	if !ok {
-		return NewLDAPError(ErrorClosing, "MessageID channel is closed.")
+		return newError(ErrorClosing, "MessageID channel is closed.")
 	}
-	encodedDelete := ber.NewString(ber.ClassApplication, ber.TypePrimative, ApplicationDelRequest, delReq.DN, ApplicationMap[ApplicationDelRequest])
+	encodedDelete := ber.NewString(ber.ClassApplication, ber.TypePrimative, uint8(ApplicationDelRequest), delReq.DN, ApplicationDelRequest.String())
 
 	packet, err := requestBuildPacket(messageID, encodedDelete, delReq.Controls)
 	if err != nil {

@@ -21,7 +21,7 @@ func (req *AddRequest) RecordType() uint8 {
 func (l *LDAPConnection) Add(req *AddRequest) error {
 	messageID, ok := l.nextMessageID()
 	if !ok {
-		return NewLDAPError(ErrorClosing, "messageID channel is closed.")
+		return newError(ErrorClosing, "messageID channel is closed.")
 	}
 
 	encodedAdd, err := encodeAddRequest(req)
@@ -49,7 +49,7 @@ func (l *LDAPConnection) Add(req *AddRequest) error {
         vals       SET OF value AttributeValue } // vals is not empty
 */
 func encodeAddRequest(addReq *AddRequest) (*ber.Packet, error) {
-	addPacket := ber.Encode(ber.ClassApplication, ber.TypeConstructed, ApplicationAddRequest, nil, ApplicationMap[ApplicationAddRequest])
+	addPacket := ber.Encode(ber.ClassApplication, ber.TypeConstructed, uint8(ApplicationAddRequest), nil, ApplicationAddRequest.String())
 	addPacket.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimative, ber.TagOctetString, addReq.Entry.DN, "LDAP DN"))
 
 	attributeList := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "AttributeList")
@@ -58,7 +58,7 @@ func encodeAddRequest(addReq *AddRequest) (*ber.Packet, error) {
 		attribute := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "Attribute")
 		attribute.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimative, ber.TagOctetString, attr.Name, "Attribute Desc"))
 		if len(attr.Values) == 0 {
-			return nil, NewLDAPError(ErrorEncoding, "attribute "+attr.Name+" had no values.")
+			return nil, newError(ErrorEncoding, "attribute "+attr.Name+" had no values.")
 		}
 		valuesSet := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSet, nil, "Attribute Value Set")
 		for _, val := range attr.Values {

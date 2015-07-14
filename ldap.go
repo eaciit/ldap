@@ -9,110 +9,8 @@ import (
 	"fmt"
 	"github.com/mavricknz/asn1-ber"
 	"io/ioutil"
+	"log"
 	"time"
-)
-
-// LDAP Application Codes
-const (
-	ApplicationBindRequest           = 0
-	ApplicationBindResponse          = 1
-	ApplicationUnbindRequest         = 2
-	ApplicationSearchRequest         = 3
-	ApplicationSearchResultEntry     = 4
-	ApplicationSearchResultDone      = 5
-	ApplicationModifyRequest         = 6
-	ApplicationModifyResponse        = 7
-	ApplicationAddRequest            = 8
-	ApplicationAddResponse           = 9
-	ApplicationDelRequest            = 10
-	ApplicationDelResponse           = 11
-	ApplicationModifyDNRequest       = 12
-	ApplicationModifyDNResponse      = 13
-	ApplicationCompareRequest        = 14
-	ApplicationCompareResponse       = 15
-	ApplicationAbandonRequest        = 16
-	ApplicationSearchResultReference = 19
-	ApplicationExtendedRequest       = 23
-	ApplicationExtendedResponse      = 24
-)
-
-var ApplicationMap = map[uint8]string{
-	ApplicationBindRequest:           "Bind Request",
-	ApplicationBindResponse:          "Bind Response",
-	ApplicationUnbindRequest:         "Unbind Request",
-	ApplicationSearchRequest:         "Search Request",
-	ApplicationSearchResultEntry:     "Search Result Entry",
-	ApplicationSearchResultDone:      "Search Result Done",
-	ApplicationModifyRequest:         "Modify Request",
-	ApplicationModifyResponse:        "Modify Response",
-	ApplicationAddRequest:            "Add Request",
-	ApplicationAddResponse:           "Add Response",
-	ApplicationDelRequest:            "Del Request",
-	ApplicationDelResponse:           "Del Response",
-	ApplicationModifyDNRequest:       "Modify DN Request",
-	ApplicationModifyDNResponse:      "Modify DN Response",
-	ApplicationCompareRequest:        "Compare Request",
-	ApplicationCompareResponse:       "Compare Response",
-	ApplicationAbandonRequest:        "Abandon Request",
-	ApplicationSearchResultReference: "Search Result Reference",
-	ApplicationExtendedRequest:       "Extended Request",
-	ApplicationExtendedResponse:      "Extended Response",
-}
-
-// LDAP Result Codes
-const (
-	LDAPResultSuccess                      = 0
-	LDAPResultOperationsError              = 1
-	LDAPResultProtocolError                = 2
-	LDAPResultTimeLimitExceeded            = 3
-	LDAPResultSizeLimitExceeded            = 4
-	LDAPResultCompareFalse                 = 5
-	LDAPResultCompareTrue                  = 6
-	LDAPResultAuthMethodNotSupported       = 7
-	LDAPResultStrongAuthRequired           = 8
-	LDAPResultReferral                     = 10
-	LDAPResultAdminLimitExceeded           = 11
-	LDAPResultUnavailableCriticalExtension = 12
-	LDAPResultConfidentialityRequired      = 13
-	LDAPResultSaslBindInProgress           = 14
-	LDAPResultNoSuchAttribute              = 16
-	LDAPResultUndefinedAttributeType       = 17
-	LDAPResultInappropriateMatching        = 18
-	LDAPResultConstraintViolation          = 19
-	LDAPResultAttributeOrValueExists       = 20
-	LDAPResultInvalidAttributeSyntax       = 21
-	LDAPResultNoSuchObject                 = 32
-	LDAPResultAliasProblem                 = 33
-	LDAPResultInvalidDNSyntax              = 34
-	LDAPResultAliasDereferencingProblem    = 36
-	LDAPResultInappropriateAuthentication  = 48
-	LDAPResultInvalidCredentials           = 49
-	LDAPResultInsufficientAccessRights     = 50
-	LDAPResultBusy                         = 51
-	LDAPResultUnavailable                  = 52
-	LDAPResultUnwillingToPerform           = 53
-	LDAPResultLoopDetect                   = 54
-	LDAPResultNamingViolation              = 64
-	LDAPResultObjectClassViolation         = 65
-	LDAPResultNotAllowedOnNonLeaf          = 66
-	LDAPResultNotAllowedOnRDN              = 67
-	LDAPResultEntryAlreadyExists           = 68
-	LDAPResultObjectClassModsProhibited    = 69
-	LDAPResultAffectsMultipleDSAs          = 71
-	LDAPResultOther                        = 80
-
-	ErrorNetwork         = 201
-	ErrorFilterCompile   = 202
-	ErrorFilterDecompile = 203
-	ErrorDebugging       = 204
-	ErrorEncoding        = 205
-	ErrorDecoding        = 206
-	ErrorMissingControl  = 207
-	ErrorInvalidArgument = 208
-	ErrorLDIFRead        = 209
-	ErrorLDIFWrite       = 210
-	ErrorClosing         = 211
-	ErrorUnknown         = 212
 )
 
 const (
@@ -120,71 +18,18 @@ const (
 	ResultChanBufferSize = 5 // buffer items in each chanResults default: 5
 )
 
-var LDAPResultCodeMap = map[uint8]string{
-	LDAPResultSuccess:                      "Success",
-	LDAPResultOperationsError:              "Operations Error",
-	LDAPResultProtocolError:                "Protocol Error",
-	LDAPResultTimeLimitExceeded:            "Time Limit Exceeded",
-	LDAPResultSizeLimitExceeded:            "Size Limit Exceeded",
-	LDAPResultCompareFalse:                 "Compare False",
-	LDAPResultCompareTrue:                  "Compare True",
-	LDAPResultAuthMethodNotSupported:       "Auth Method Not Supported",
-	LDAPResultStrongAuthRequired:           "Strong Auth Required",
-	LDAPResultReferral:                     "Referral",
-	LDAPResultAdminLimitExceeded:           "Admin Limit Exceeded",
-	LDAPResultUnavailableCriticalExtension: "Unavailable Critical Extension",
-	LDAPResultConfidentialityRequired:      "Confidentiality Required",
-	LDAPResultSaslBindInProgress:           "Sasl Bind In Progress",
-	LDAPResultNoSuchAttribute:              "No Such Attribute",
-	LDAPResultUndefinedAttributeType:       "Undefined Attribute Type",
-	LDAPResultInappropriateMatching:        "Inappropriate Matching",
-	LDAPResultConstraintViolation:          "Constraint Violation",
-	LDAPResultAttributeOrValueExists:       "Attribute Or Value Exists",
-	LDAPResultInvalidAttributeSyntax:       "Invalid Attribute Syntax",
-	LDAPResultNoSuchObject:                 "No Such Object",
-	LDAPResultAliasProblem:                 "Alias Problem",
-	LDAPResultInvalidDNSyntax:              "Invalid DN Syntax",
-	LDAPResultAliasDereferencingProblem:    "Alias Dereferencing Problem",
-	LDAPResultInappropriateAuthentication:  "Inappropriate Authentication",
-	LDAPResultInvalidCredentials:           "Invalid Credentials",
-	LDAPResultInsufficientAccessRights:     "Insufficient Access Rights",
-	LDAPResultBusy:                         "Busy",
-	LDAPResultUnavailable:                  "Unavailable",
-	LDAPResultUnwillingToPerform:           "Unwilling To Perform",
-	LDAPResultLoopDetect:                   "Loop Detect",
-	LDAPResultNamingViolation:              "Naming Violation",
-	LDAPResultObjectClassViolation:         "Object Class Violation",
-	LDAPResultNotAllowedOnNonLeaf:          "Not Allowed On Non Leaf",
-	LDAPResultNotAllowedOnRDN:              "Not Allowed On RDN",
-	LDAPResultEntryAlreadyExists:           "Entry Already Exists",
-	LDAPResultObjectClassModsProhibited:    "Object Class Mods Prohibited",
-	LDAPResultAffectsMultipleDSAs:          "Affects Multiple DSAs",
-	LDAPResultOther:                        "Other",
-
-	ErrorNetwork:         "ErrorNetwork",
-	ErrorFilterCompile:   "ErrorFilterCompile",
-	ErrorFilterDecompile: "ErrorFilterDecompile",
-	ErrorDebugging:       "ErrorDebugging",
-	ErrorEncoding:        "ErrorEncoding",
-	ErrorDecoding:        "ErrorDecoding",
-	ErrorMissingControl:  "ErrorMissingControl",
-	ErrorInvalidArgument: "ErrorInvalidArgument",
-	ErrorLDIFRead:        "ErrorLDIFRead",
-	ErrorClosing:         "ErrorClosing",
-}
-
 // Adds descriptions to an LDAP Response packet for debugging
 func addLDAPDescriptions(packet *ber.Packet) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = NewLDAPError(ErrorDebugging, "Cannot process packet to add descriptions")
+			err = newError(ErrorDebugging, "Cannot process packet to add descriptions")
 		}
 	}()
 	packet.Description = "LDAP Response"
 	packet.Children[0].Description = "Message ID"
 
-	application := packet.Children[1].Tag
-	packet.Children[1].Description = ApplicationMap[application]
+	application := ApplicationCode(packet.Children[1].Tag)
+	packet.Children[1].Description = application.String()
 
 	switch application {
 	case ApplicationBindRequest:
@@ -241,7 +86,7 @@ func addControlDescriptions(packet *ber.Packet) {
 	packet.Description = "Controls"
 	for _, child := range packet.Children {
 		child.Description = "Control"
-		child.Children[0].Description = "Control Type (" + ControlTypeMap[child.Children[0].ValueString()] + ")"
+		child.Children[0].Description = fmt.Sprintf("Control Type (%v)", ControlType(child.Children[0].ValueString()))
 		value := child.Children[1]
 		if len(child.Children) == 3 {
 			child.Children[1].Description = "Criticality"
@@ -249,7 +94,7 @@ func addControlDescriptions(packet *ber.Packet) {
 		}
 		value.Description = "Control Value"
 
-		switch child.Children[0].ValueString() {
+		switch ControlType(child.Children[0].ValueString()) {
 		case ControlTypePaging:
 			value.Description += " (Paging)"
 			if value.Value != nil {
@@ -269,15 +114,22 @@ func addControlDescriptions(packet *ber.Packet) {
 func addRequestDescriptions(packet *ber.Packet) {
 	packet.Description = "LDAP Request"
 	packet.Children[0].Description = "Message ID"
-	packet.Children[1].Description = ApplicationMap[packet.Children[1].Tag]
+	packet.Children[1].Description = ApplicationCode(packet.Children[1].Tag).String()
 	if len(packet.Children) == 3 {
 		addControlDescriptions(packet.Children[2])
 	}
 }
 
 func addDefaultLDAPResponseDescriptions(packet *ber.Packet) {
-	resultCode := packet.Children[1].Children[0].Value.(uint64)
-	packet.Children[1].Children[0].Description = "Result Code (" + LDAPResultCodeMap[uint8(resultCode)] + ")"
+	code, ok := packet.Children[1].Children[0].Value.(uint64)
+	if !ok {
+		log.Println("type assertion failed in ldap.go 125")
+		code = 212
+	}
+
+	resultCode := ResultCode(code)
+
+	packet.Children[1].Children[0].Description = "Result Code (" + resultCode.String() + ")"
 	packet.Children[1].Children[1].Description = "Matched DN"
 	packet.Children[1].Children[2].Description = "Error Message"
 	if len(packet.Children[1].Children) > 3 {
@@ -301,30 +153,37 @@ func DebugBinaryFile(FileName string) error {
 	return nil
 }
 
-type LDAPError struct {
+type Error struct {
 	sText      string
-	ResultCode uint8
+	ResultCode ResultCode
 }
 
-func (e *LDAPError) Error() string {
-	return fmt.Sprintf("LDAP Result Code %d %q: %s", e.ResultCode, LDAPResultCodeMap[e.ResultCode], e.sText)
+func (e *Error) Error() string {
+	return fmt.Sprintf("LDAP Result Code %d %q: %s", e.ResultCode, e.ResultCode.String(), e.sText)
 }
 
-func NewLDAPError(resultCode uint8, sText string) error {
-	return &LDAPError{ResultCode: resultCode, sText: sText}
+func newError(resultCode ResultCode, sText string) error {
+	return &Error{ResultCode: resultCode, sText: sText}
 }
 
-func getLDAPResultCode(p *ber.Packet) (code uint8, description string) {
+func getResultCode(p *ber.Packet) (ResultCode, string) {
+	var code ResultCode
+	var description string
 	if len(p.Children) >= 2 {
 		response := p.Children[1]
 		if response.ClassType == ber.ClassApplication && response.TagType == ber.TypeConstructed && len(response.Children) == 3 {
-			code = uint8(response.Children[0].Value.(uint64))
+			code, ok := response.Children[0].Value.(uint64)
+			if !ok {
+				log.Println("type assertion failed in ldap.go 174")
+				code = 212
+			}
+			resultCode := ResultCode(code)
 			description = response.Children[2].ValueString()
-			return
+			return resultCode, description
 		}
 	}
 
 	code = ErrorNetwork
 	description = "Invalid packet format"
-	return
+	return code, description
 }
