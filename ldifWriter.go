@@ -30,7 +30,7 @@ func NewLDIFWriter(writer io.Writer) (*LDIFWriter, error) {
 func (lw *LDIFWriter) WriteLDIFRecord(record LDIFRecord) error {
 	// TODO: Controls for all.
 	if record == nil {
-		return NewLDAPError(ErrorLDIFWrite, "nil record")
+		return newError(ErrorLDIFWrite, "nil record")
 	}
 	switch record.RecordType() {
 	case AddRecord:
@@ -93,7 +93,7 @@ func (lw *LDIFWriter) WriteLDIFRecord(record LDIFRecord) error {
 func (lw *LDIFWriter) writeDN(DN string) (err error) {
 	// TODO need canonical DN?
 	if len(DN) == 0 {
-		return NewLDAPError(ErrorLDIFWrite, "DN has zero length.")
+		return newError(ErrorLDIFWrite, "DN has zero length.")
 	}
 	if err := lw.writeAttrLine("dn", DN); err != nil {
 		return err

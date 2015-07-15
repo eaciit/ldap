@@ -2,11 +2,10 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// File contains a filter compiler/decompiler
-
-// Influenced by Perl LDAP and OpenDJ, esp regex's.
+package ldap
 
 /*
+Influenced by Perl LDAP and OpenDJ, esp regex's.
 An LDAP search filter is defined in Section 4.5.1 of [RFC4511]
         Filter ::= CHOICE {
             and                [0] SET SIZE (1..MAX) OF filter Filter,
@@ -51,7 +50,6 @@ An LDAP search filter is defined in Section 4.5.1 of [RFC4511]
         LDAPString ::= OCTET STRING -- UTF-8 encoded,
                                     -- [Unicode] characters
 */
-package ldap
 
 import (
 	"encoding/hex"
@@ -142,10 +140,10 @@ func init() {
 
 func CompileFilter(filter string) (*ber.Packet, error) {
 	if len(filter) == 0 {
-		return nil, NewLDAPError(ErrorFilterCompile, "Filter of zero length")
+		return nil, newError(ErrorFilterCompile, "Filter of zero length")
 	}
 	if filter[0] != '(' {
-		return nil, NewLDAPError(ErrorFilterCompile, "Filter does not start with '('")
+		return nil, newError(ErrorFilterCompile, "Filter does not start with '('")
 	}
 	return filterParse(filter)
 }
@@ -176,7 +174,7 @@ func filterParse(filter string) (*ber.Packet, error) {
 			continue
 		} else if matches := endRegex.FindStringSubmatch(filter[pos:]); len(matches) != 0 {
 			if bracketCount <= 0 {
-				return nil, NewLDAPError(ErrorFilterCompile,
+				return nil, newError(ErrorFilterCompile,
 					"Finished compiling filter with extra at end :"+
 						fmt.Sprint(filter[pos:]))
 			}
@@ -203,11 +201,8 @@ func filterParse(filter string) (*ber.Packet, error) {
 		}
 		break
 	}
-	//if len(p) > 0 {
-	//	ber.PrintPacket(p[0])
-	//}
 	if len(filter[pos:]) > 0 {
-		return nil, NewLDAPError(ErrorFilterCompile, filter+" : Error compiling filter, invalid filter : "+fmt.Sprint(filter[pos:]))
+		return nil, newError(ErrorFilterCompile, filter+" : Error compiling filter, invalid filter : "+fmt.Sprint(filter[pos:]))
 	}
 	return p[0], nil
 }
@@ -288,7 +283,7 @@ func encodeSubStringMatch(attr, value string) (*ber.Packet, error) {
 			if FilterDebug {
 				fmt.Println("Did not match filter")
 			}
-			return nil, NewLDAPError(ErrorFilterCompile, "Did not match filter.")
+			return nil, newError(ErrorFilterCompile, "Did not match filter.")
 		}
 		// attr=*XXX
 		if len(matches) == 0 {
@@ -365,7 +360,7 @@ func encodeExtensibleMatch(attr, value string) (*ber.Packet, error) {
 			p.AppendChild(pdn)
 		}
 	} else {
-		return nil, NewLDAPError(ErrorFilterCompile,
+		return nil, newError(ErrorFilterCompile,
 			"Invalid Extensible attr : "+attr)
 	}
 	if FilterDebug {
@@ -377,7 +372,7 @@ func encodeExtensibleMatch(attr, value string) (*ber.Packet, error) {
 func DecompileFilter(packet *ber.Packet) (ret string, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = NewLDAPError(ErrorFilterDecompile, "Error decompiling filter")
+			err = newError(ErrorFilterDecompile, "Error decompiling filter")
 		}
 	}()
 	ret = "("
@@ -482,7 +477,7 @@ func EscapeFilterValue(filter string) string {
 func AttributeValueAssertion(attr, op, value string) (*ber.Packet, error) {
 	filterComp, ok := FilterComponent[op]
 	if !ok {
-		return nil, NewLDAPError(ErrorEncoding, "Invalid Assertion Op.")
+		return nil, newError(ErrorEncoding, "Invalid Assertion Op.")
 	}
 
 	// AttributeValueAssertion seq of the right op.

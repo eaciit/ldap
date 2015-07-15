@@ -92,7 +92,7 @@ LINES:
 			dn = string(value)
 			continue LINES
 		case i == 0 && !bytes.EqualFold(attrName, []byte("dn")):
-			return nil, NewLDAPError(ErrorLDIFRead, "'dn:' not at the start of line in LDIF record")
+			return nil, newError(ErrorLDIFRead, "'dn:' not at the start of line in LDIF record")
 		case bytes.EqualFold(attrName, []byte("changetype")):
 			switch strings.ToLower(string(value)) {
 			// check the record type, if one.
@@ -117,7 +117,7 @@ LINES:
 		break
 	}
 	// TODO - add the missing record types
-	unsupportedError := NewLDAPError(ErrorLDIFRead, "Unsupported LDIF record type")
+	unsupportedError := newError(ErrorLDIFRead, "Unsupported LDIF record type")
 	switch recordtype {
 	case AddRecord:
 		addEntry, err := ldifLinesToEntryRecord(dn, lines[dataLineStart:])
@@ -164,7 +164,7 @@ LINES:
 		}
 		return ldifLinesToEntryRecord(dn, lines[dataLineStart:])
 	}
-	return nil, NewLDAPError(ErrorLDIFRead, "Unkown LDIF record type")
+	return nil, newError(ErrorLDIFRead, "Unkown LDIF record type")
 }
 
 func ldifLinesToModifyRecord(dn string, lines [][]byte) (*ModifyRequest, error) {
@@ -182,7 +182,7 @@ func ldifLinesToModifyRecord(dn string, lines [][]byte) (*ModifyRequest, error) 
 		}
 		if sep {
 			if newMod == nil {
-				return nil, NewLDAPError(ErrorLDIFRead, "Misplaced '-'?")
+				return nil, newError(ErrorLDIFRead, "Misplaced '-'?")
 			}
 			modReq.AddMod(newMod)
 			isNewMod = true
@@ -200,7 +200,7 @@ func ldifLinesToModifyRecord(dn string, lines [][]byte) (*ModifyRequest, error) 
 			case attrOrOpLower == "increment":
 				currentModType = ModIncrement
 			case true:
-				return nil, NewLDAPError(ErrorLDIFRead, "Expecting Modtype, not found.")
+				return nil, newError(ErrorLDIFRead, "Expecting Modtype, not found.")
 			}
 			currentAttrName = string(bValue)
 			isNewMod = false
@@ -208,7 +208,7 @@ func ldifLinesToModifyRecord(dn string, lines [][]byte) (*ModifyRequest, error) 
 		} else {
 			attrName := string(bAttr)
 			if currentAttrName != attrName {
-				return nil, NewLDAPError(ErrorLDIFRead,
+				return nil, newError(ErrorLDIFRead,
 					fmt.Sprintf("AttrName mismatch %s != %s", currentAttrName, attrName))
 			}
 			attrValue := string(bValue)
@@ -250,7 +250,7 @@ func findAttrAndValue(line []byte) (attr []byte, value []byte, separator bool, e
 	}
 	// find the location of first ':'
 	if colonLoc == -1 {
-		return nil, nil, false, NewLDAPError(ErrorLDIFRead, ": not found in LDIF attr line.")
+		return nil, nil, false, newError(ErrorLDIFRead, ": not found in LDIF attr line.")
 	} else if line[colonLoc+1] == ':' { // base64 attr
 		valueStart = colonLoc + 2
 		if line[colonLoc+2] == ' ' {
@@ -269,7 +269,7 @@ func findAttrAndValue(line []byte) (attr []byte, value []byte, separator bool, e
 	if base64 {
 		value, err = decodeBase64(line[valueStart:])
 		if err != nil {
-			return nil, nil, false, NewLDAPError(ErrorLDIFRead, "Error decoding base64 value")
+			return nil, nil, false, newError(ErrorLDIFRead, "Error decoding base64 value")
 		}
 	} else {
 		value = line[valueStart:]
@@ -337,7 +337,7 @@ func decodeBase64(encodedBytes []byte) ([]byte, error) {
 	decodedValue := make([]byte, stdBase64.DecodedLen(len(encodedBytes)))
 	count, err := stdBase64.Decode(decodedValue, encodedBytes)
 	if err != nil || count == 0 {
-		return nil, NewLDAPError(ErrorLDIFRead, "Error decoding base64 value")
+		return nil, newError(ErrorLDIFRead, "Error decoding base64 value")
 	}
 	return decodedValue[:count], nil
 }

@@ -28,7 +28,7 @@ type ModDnRequest struct {
 func (l *Connection) ModDn(req *ModDnRequest) error {
 	messageID, ok := l.nextMessageID()
 	if !ok {
-		return NewLDAPError(ErrorClosing, "MessageID channel is closed.")
+		return newError(ErrorClosing, "MessageID channel is closed.")
 	}
 
 	encodedModDn := encodeModDnRequest(req)
@@ -43,7 +43,7 @@ func (l *Connection) ModDn(req *ModDnRequest) error {
 
 func encodeModDnRequest(req *ModDnRequest) (p *ber.Packet) {
 	p = ber.Encode(ber.ClassApplication, ber.TypeConstructed,
-		ApplicationModifyDNRequest, nil, ApplicationMap[ApplicationModifyDNRequest])
+		uint8(ApplicationModifyDNRequest), nil, ApplicationModifyDNRequest.String())
 	p.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimative, ber.TagOctetString, req.DN, "LDAPDN"))
 	p.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimative, ber.TagOctetString, req.NewRDN, "NewRDN"))
 	p.AppendChild(ber.NewBoolean(ber.ClassUniversal, ber.TypePrimative, ber.TagBoolean, req.DeleteOldDn, "deleteoldrdn"))

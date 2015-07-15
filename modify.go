@@ -73,7 +73,7 @@ func modifyTest(l *ldap.Conn){
 func (l *Connection) Modify(modReq *ModifyRequest) error {
 	messageID, ok := l.nextMessageID()
 	if !ok {
-		return NewLDAPError(ErrorClosing, "MessageID channel is closed.")
+		return newError(ErrorClosing, "MessageID channel is closed.")
 	}
 	encodedModify := encodeModifyRequest(modReq)
 
@@ -90,7 +90,7 @@ func (req *ModifyRequest) Bytes() []byte {
 }
 
 func encodeModifyRequest(req *ModifyRequest) (p *ber.Packet) {
-	modpacket := ber.Encode(ber.ClassApplication, ber.TypeConstructed, ApplicationModifyRequest, nil, ApplicationMap[ApplicationModifyRequest])
+	modpacket := ber.Encode(ber.ClassApplication, ber.TypeConstructed, uint8(ApplicationModifyRequest), nil, ApplicationModifyRequest.String())
 	modpacket.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimative, ber.TagOctetString, req.DN, "LDAP DN"))
 	seqOfChanges := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "Changes")
 	for _, mod := range req.Mods {

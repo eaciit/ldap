@@ -13,10 +13,10 @@ import (
 func (l *Connection) Abandon(abandonMessageID uint64) error {
 	messageID, ok := l.nextMessageID()
 	if !ok {
-		return NewLDAPError(ErrorClosing, "MessageID channel is closed.")
+		return newError(ErrorClosing, "MessageID channel is closed.")
 	}
 
-	encodedAbandon := ber.NewInteger(ber.ClassApplication, ber.TypePrimative, ApplicationAbandonRequest, abandonMessageID, ApplicationMap[ApplicationAbandonRequest])
+	encodedAbandon := ber.NewInteger(ber.ClassApplication, ber.TypePrimative, uint8(ApplicationAbandonRequest), abandonMessageID, ApplicationAbandonRequest.String())
 
 	packet, err := requestBuildPacket(messageID, encodedAbandon, nil)
 	if err != nil {
@@ -34,7 +34,7 @@ func (l *Connection) Abandon(abandonMessageID uint64) error {
 	}
 
 	if channel == nil {
-		return NewLDAPError(ErrorNetwork, "Could not send message")
+		return newError(ErrorNetwork, "Could not send message")
 	}
 
 	defer l.finishMessage(messageID)
