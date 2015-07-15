@@ -5,8 +5,7 @@ import (
 	"testing"
 )
 
-var ldap_server string = "ldap.itd.umich.edu"
-var ldap_port uint16 = 389
+var ldap_address string = "ldap.itd.umich.edu:389"
 var base_dn string = "dc=umich,dc=edu"
 var filter []string = []string{
 	"(cn=cis-fac)",
@@ -18,7 +17,7 @@ var attributes []string = []string{
 
 func TestConnect(t *testing.T) {
 	fmt.Printf("TestConnect: starting...\n")
-	l := NewLDAPConnection(ldap_server, ldap_port)
+	l := NewConnection(ldap_address)
 	err := l.Connect()
 	if err != nil {
 		t.Error(err)
@@ -30,7 +29,7 @@ func TestConnect(t *testing.T) {
 
 func TestSearch(t *testing.T) {
 	fmt.Printf("TestSearch: starting...\n")
-	l := NewLDAPConnection(ldap_server, ldap_port)
+	l := NewConnection(ldap_address)
 	err := l.Connect()
 	if err != nil {
 		t.Error(err)
@@ -56,7 +55,7 @@ func TestSearch(t *testing.T) {
 
 func TestSearchWithPaging(t *testing.T) {
 	fmt.Printf("TestSearchWithPaging: starting...\n")
-	l := NewLDAPConnection(ldap_server, ldap_port)
+	l := NewConnection(ldap_address)
 	err := l.Connect()
 	if err != nil {
 		t.Error(err)
@@ -85,7 +84,7 @@ func TestSearchWithPaging(t *testing.T) {
 	fmt.Printf("TestSearchWithPaging: %s -> num of entries = %d\n", search_request.Filter, len(sr.Entries))
 }
 
-func testMultiGoroutineSearch(t *testing.T, l *LDAPConnection, results chan *SearchResult, i int) {
+func testMultiGoroutineSearch(t *testing.T, l *Connection, results chan *SearchResult, i int) {
 	search_request := NewSearchRequest(
 		base_dn,
 		ScopeWholeSubtree, DerefAlways, 0, 0, false,
@@ -105,7 +104,7 @@ func testMultiGoroutineSearch(t *testing.T, l *LDAPConnection, results chan *Sea
 
 func TestMultiGoroutineSearch(t *testing.T) {
 	fmt.Printf("TestMultiGoroutineSearch: starting...\n")
-	l := NewLDAPConnection(ldap_server, ldap_port)
+	l := NewConnection(ldap_address)
 	err := l.Connect()
 	if err != nil {
 		t.Error(err)

@@ -9,7 +9,7 @@ import (
 
 func TestSearchTimeout(t *testing.T) {
 	fmt.Printf("TestSearchTimeout: starting...\n")
-	l := NewLDAPConnection(ldap_server, ldap_port)
+	l := NewConnection(ldap_address)
 	l.NetworkConnectTimeout = 5000 * time.Millisecond
 	l.ReadTimeout = 30 * time.Second
 	l.AbandonMessageOnReadTimeout = true
@@ -46,8 +46,8 @@ func TestSearchTimeoutSSL(t *testing.T) {
 		InsecureSkipVerify: true,
 	}
 
-	l := &LDAPConnection{
-		Addr:                  fmt.Sprintf("%s:%d", ldap_server, 636),
+	l := &Connection{
+		Addr:                  ldap_address,
 		IsSSL:                 true,
 		TlsConfig:             config,
 		NetworkConnectTimeout: 5000 * time.Millisecond,
