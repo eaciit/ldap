@@ -47,7 +47,7 @@ func TestSearchTimeoutSSL(t *testing.T) {
 	}
 
 	l := &Connection{
-		Addr:                  ldap_address,
+		Addr:                  ldap_address_ssl,
 		IsSSL:                 true,
 		TlsConfig:             config,
 		NetworkConnectTimeout: 5000 * time.Millisecond,
