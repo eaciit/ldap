@@ -10,7 +10,7 @@ import (
 )
 
 // Will return an error. Normally due to closed connection.
-func (l *LDAPConnection) Abandon(abandonMessageID uint64) error {
+func (l *Connection) Abandon(abandonMessageID uint64) error {
 	messageID, ok := l.nextMessageID()
 	if !ok {
 		return NewLDAPError(ErrorClosing, "MessageID channel is closed.")

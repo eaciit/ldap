@@ -15,19 +15,7 @@ import (
 	"time"
 )
 
-// Conn - LDAP Connection and also pre/post connect configuation
-//	IsTLS bool // default false
-//	IsSSL bool // default false
-//	Debug bool // default false
-//	NetworkConnectTimeout time.Duration // default 0 no timeout
-//	ReadTimeout    time.Duration // default 0 no timeout
-//	AbandonMessageOnReadTimeout bool // send abandon on a ReadTimeout (not for searches yet)
-//	Addr           string // default empty
-//
-// A minimal connection...
-//  ldap := NewLDAPConnection("localhost",389)
-//  err := ldap.Connect() // Connects the existing connection, or returns an error
-type LDAPConnection struct {
+type Connection struct {
 	IsTLS bool
 	IsSSL bool
 	Debug bool
@@ -48,9 +36,36 @@ type LDAPConnection struct {
 	connected          bool
 }
 
-// Connect connects using information in LDAPConnection.
-// LDAPConnection should be populated with connection information.
-func (l *LDAPConnection) Connect() error {
+
+// NewConnection creates a new Connection object. The address is in the same format as
+// used in the net package. After 
+func NewConnection(address string) *Connection {
+	return &Connection{ Addr: address }
+}
+
+// Behaves like NewConnection, except that an additional parameter tlsConfig is expected.
+// The resulting connection uses TLS.
+func NewTLSConnection(address string, tlsConfig *tls.Config) *Connection {
+	return &Connection{
+		Addr:      address,
+		IsTLS:     true,
+		TlsConfig: tlsConfig,
+	}
+}
+
+// Behaves like NewConnection, except that an additional parameter tlsConfig is expected.
+// The resulting connection uses SSL.
+func NewSSLConnection(address string, tlsConfig *tls.Config) *Connection {
+	return &Connection{
+		Addr:      address,
+		IsSSL:     true,
+		TlsConfig: tlsConfig,
+	}
+}
+
+// Connect connects using information in Connection.
+// Connection should be populated with connection information.
+func (l *Connection) Connect() error {
 	l.chanResults = map[uint64]chan *ber.Packet{}
 	l.chanProcessMessage = make(chan *messagePacket)
 	l.chanMessageID = make(chan uint64)
@@ -90,37 +105,13 @@ func (l *LDAPConnection) Connect() error {
 	return nil
 }
 
-// NewConn returns a new basic connection. Should start connection via
-// Connect
-func NewLDAPConnection(server string, port uint16) *LDAPConnection {
-	return &LDAPConnection{
-		Addr: fmt.Sprintf("%s:%d", server, port),
-	}
-}
-
-func NewLDAPTLSConnection(server string, port uint16, tlsConfig *tls.Config) *LDAPConnection {
-	return &LDAPConnection{
-		Addr:      fmt.Sprintf("%s:%d", server, port),
-		IsTLS:     true,
-		TlsConfig: tlsConfig,
-	}
-}
-
-func NewLDAPSSLConnection(server string, port uint16, tlsConfig *tls.Config) *LDAPConnection {
-	return &LDAPConnection{
-		Addr:      fmt.Sprintf("%s:%d", server, port),
-		IsSSL:     true,
-		TlsConfig: tlsConfig,
-	}
-}
-
-func (l *LDAPConnection) start() {
+func (l *Connection) start() {
 	go l.reader()
 	go l.processMessages()
 }
 
 // Close closes the connection.
-func (l *LDAPConnection) Close() error {
+func (l *Connection) Close() error {
 	if l.Debug {
 		fmt.Println("Starting Close().")
 	}
@@ -129,7 +120,7 @@ func (l *LDAPConnection) Close() error {
 }
 
 // Returns the next available messageID
-func (l *LDAPConnection) nextMessageID() (messageID uint64, ok bool) {
+func (l *Connection) nextMessageID() (messageID uint64, ok bool) {
 	messageID, ok = <-l.chanMessageID
 	if l.Debug {
 		fmt.Printf("MessageID: %d, ok: %v\n", messageID, ok)
@@ -138,7 +129,7 @@ func (l *LDAPConnection) nextMessageID() (messageID uint64, ok bool) {
 }
 
 // StartTLS sends the command to start a TLS session and then creates a new TLS Client
-func (l *LDAPConnection) startTLS() error {
+func (l *Connection) startTLS() error {
 	messageID, ok := l.nextMessageID()
 	if !ok {
 		return NewLDAPError(ErrorClosing, "MessageID channel is closed.")
@@ -191,7 +182,7 @@ type messagePacket struct {
 	Channel   chan *ber.Packet
 }
 
-func (l *LDAPConnection) getNewResultChannel(message_id uint64) (out chan *ber.Packet, err error) {
+func (l *Connection) getNewResultChannel(message_id uint64) (out chan *ber.Packet, err error) {
 	// as soon as a channel is requested add to chanResults to never miss
 	// on cleanup.
 	l.lockChanResults.Lock()
@@ -211,7 +202,7 @@ func (l *LDAPConnection) getNewResultChannel(message_id uint64) (out chan *ber.P
 	return
 }
 
-func (l *LDAPConnection) sendMessage(p *ber.Packet) (out chan *ber.Packet, err error) {
+func (l *Connection) sendMessage(p *ber.Packet) (out chan *ber.Packet, err error) {
 	message_id := p.Children[0].Value.(uint64)
 	// sendProcessMessage may not process a message on shutdown
 	// getNewResultChannel adds id/chan to chan results
@@ -228,7 +219,7 @@ func (l *LDAPConnection) sendMessage(p *ber.Packet) (out chan *ber.Packet, err e
 	return
 }
 
-func (l *LDAPConnection) processMessages() {
+func (l *Connection) processMessages() {
 	defer l.closeAllChannels()
 	defer func() {
 		// Close all channels, connection and quit.
@@ -286,7 +277,7 @@ func (l *LDAPConnection) processMessages() {
 	}
 }
 
-func (l *LDAPConnection) closeAllChannels() {
+func (l *Connection) closeAllChannels() {
 	l.lockChanResults.Lock()
 	defer l.lockChanResults.Unlock()
 	for MessageID, Channel := range l.chanResults {
@@ -305,12 +296,12 @@ func (l *LDAPConnection) closeAllChannels() {
 	l.chanProcessMessage = nil
 }
 
-func (l *LDAPConnection) finishMessage(MessageID uint64) {
+func (l *Connection) finishMessage(MessageID uint64) {
 	message_packet := &messagePacket{Op: MessageFinish, MessageID: MessageID}
 	l.sendProcessMessage(message_packet)
 }
 
-func (l *LDAPConnection) reader() {
+func (l *Connection) reader() {
 	defer l.Close()
 	for {
 		p, err := ber.ReadPacket(l.conn)
@@ -330,7 +321,7 @@ func (l *LDAPConnection) reader() {
 	}
 }
 
-func (l *LDAPConnection) readerToChanResults(message_packet *messagePacket) {
+func (l *Connection) readerToChanResults(message_packet *messagePacket) {
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Fprintln(os.Stderr, "Recovered in readerToChanResults", r)
@@ -358,7 +349,7 @@ func (l *LDAPConnection) readerToChanResults(message_packet *messagePacket) {
 	}
 }
 
-func (l *LDAPConnection) sendProcessMessage(message *messagePacket) {
+func (l *Connection) sendProcessMessage(message *messagePacket) {
 	go func() {
 		// multiple senders can queue on l.chanProcessMessage
 		// but block on shutdown.

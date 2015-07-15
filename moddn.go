@@ -25,7 +25,7 @@ type ModDnRequest struct {
 }
 
 //Untested.
-func (l *LDAPConnection) ModDn(req *ModDnRequest) error {
+func (l *Connection) ModDn(req *ModDnRequest) error {
 	messageID, ok := l.nextMessageID()
 	if !ok {
 		return NewLDAPError(ErrorClosing, "MessageID channel is closed.")

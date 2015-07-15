@@ -70,7 +70,7 @@ func modifyTest(l *ldap.Conn){
                    ...  },
               modification    PartialAttribute } }
 */
-func (l *LDAPConnection) Modify(modReq *ModifyRequest) error {
+func (l *Connection) Modify(modReq *ModifyRequest) error {
 	messageID, ok := l.nextMessageID()
 	if !ok {
 		return NewLDAPError(ErrorClosing, "MessageID channel is closed.")

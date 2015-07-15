@@ -25,7 +25,7 @@ type CompareRequest struct {
 	Controls []Control
 }
 
-func (l *LDAPConnection) Compare(req *CompareRequest) (bool, error) {
+func (l *Connection) Compare(req *CompareRequest) (bool, error) {
 	messageID, ok := l.nextMessageID()
 	if !ok {
 		return false, NewLDAPError(ErrorClosing, "MessageID channel is closed.")

@@ -21,7 +21,7 @@ func (req *DeleteRequest) RecordType() uint8 {
 Simple delete
 */
 
-func (l *LDAPConnection) Delete(delReq *DeleteRequest) (error error) {
+func (l *Connection) Delete(delReq *DeleteRequest) (error error) {
 	messageID, ok := l.nextMessageID()
 	if !ok {
 		return NewLDAPError(ErrorClosing, "MessageID channel is closed.")

@@ -30,7 +30,7 @@ func requestBuildPacket(messageID uint64, opPacket *ber.Packet, controls []Contr
 	return
 }
 
-func (l *LDAPConnection) sendReqRespPacket(messageID uint64, packet *ber.Packet) error {
+func (l *Connection) sendReqRespPacket(messageID uint64, packet *ber.Packet) error {
 
 	if l.Debug {
 		ber.PrintPacket(packet)

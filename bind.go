@@ -13,7 +13,7 @@ import (
 Simple bind to the server. If using a timeout you should close the connection
 on a bind failure.
 */
-func (l *LDAPConnection) Bind(username, password string) error {
+func (l *Connection) Bind(username, password string) error {
 	messageID, ok := l.nextMessageID()
 	if !ok {
 		return NewLDAPError(ErrorClosing, "MessageID channel is closed.")

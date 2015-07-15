@@ -18,7 +18,7 @@ func (req *AddRequest) RecordType() uint8 {
 	return AddRecord
 }
 
-func (l *LDAPConnection) Add(req *AddRequest) error {
+func (l *Connection) Add(req *AddRequest) error {
 	messageID, ok := l.nextMessageID()
 	if !ok {
 		return NewLDAPError(ErrorClosing, "messageID channel is closed.")
