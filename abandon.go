@@ -6,7 +6,7 @@ package ldap
 
 import (
 	"fmt"
-	"github.com/mavricknz/asn1-ber"
+	"github.com/rbns/asn1-ber"
 )
 
 // Will return an error. Normally due to closed connection.

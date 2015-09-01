@@ -8,7 +8,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"github.com/mavricknz/asn1-ber"
+	"github.com/rbns/asn1-ber"
 	"net"
 	"os"
 	"sync"

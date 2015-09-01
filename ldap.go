@@ -7,7 +7,7 @@ package ldap
 
 import (
 	"fmt"
-	"github.com/mavricknz/asn1-ber"
+	"github.com/rbns/asn1-ber"
 	"io/ioutil"
 	"log"
 	"time"
