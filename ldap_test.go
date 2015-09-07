@@ -6,7 +6,7 @@ import (
 )
 
 var ldap_address string = "ldap.itd.umich.edu:389"
-var ldap_address_ssl string ="ldap.itd.umich.edu:636"
+var ldap_address_ssl string = "ldap.itd.umich.edu:636"
 var base_dn string = "dc=umich,dc=edu"
 var filter []string = []string{
 	"(cn=cis-fac)",

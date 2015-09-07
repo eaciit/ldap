@@ -1,7 +1,3 @@
-// Copyright 2011 The Go Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
-
 package ldap
 
 import (
@@ -36,11 +32,10 @@ type Connection struct {
 	connected          bool
 }
 
-
 // NewConnection creates a new Connection object. The address is in the same format as
-// used in the net package. After 
+// used in the net package.
 func NewConnection(address string) *Connection {
-	return &Connection{ Addr: address }
+	return &Connection{Addr: address}
 }
 
 // Behaves like NewConnection, except that an additional parameter tlsConfig is expected.

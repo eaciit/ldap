@@ -4,24 +4,22 @@ import (
 	"github.com/rbns/asn1-ber"
 )
 
-// PasswdModifyRequestValue ::= SEQUENCE {
-//      userIdentity    [0]  OCTET STRING OPTIONAL
-//      oldPasswd       [1]  OCTET STRING OPTIONAL
-//      newPasswd       [2]  OCTET STRING OPTIONAL }
-
+// PasswordModifyRequest implements the payload and encoding specified in
+// https://tools.ietf.org/html/rfc3062
 type PasswordModifyRequest struct {
-	UserIdentity	string
-	OldPasswd	string
-	NewPasswd	string
+	UserIdentity string
+	OldPasswd    string
+	NewPasswd    string
 }
 
+// Encode the PasswordModifyRequest into a ber.Packet
 func (r *PasswordModifyRequest) Encode() (*ber.Packet, error) {
 	p := ber.Encode(ber.ClassApplication, ber.TypeConstructed, uint8(ApplicationExtendedRequest), nil, "PasswordModifyRequest")
 	p.AppendChild(ber.NewString(ber.ClassContext, ber.TypePrimative, 0, "1.3.6.1.4.1.4203.1.11.1", "Password Modify Request"))
 
 	octetString := ber.Encode(ber.ClassContext, ber.TypePrimative, 1, nil, "Octet String")
 	value := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "PasswordModifyRequestValue")
-	
+
 	if r.UserIdentity != "" {
 		userIdentity := ber.NewString(ber.ClassContext, ber.TypePrimative, 0, string(r.UserIdentity), "userIdentity")
 		value.AppendChild(userIdentity)
@@ -55,6 +53,6 @@ func (l *Connection) Passwd(req *PasswordModifyRequest) error {
 	}
 
 	packet, err := requestBuildPacket(messageID, encodedReq, nil)
-	
-	return l.sendReqRespPacket(messageID, packet)	
+
+	return l.sendReqRespPacket(messageID, packet)
 }
