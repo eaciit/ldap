@@ -10,9 +10,11 @@ type AddRequest struct {
 	Controls []Control
 }
 
+/*
 func (req *AddRequest) RecordType() uint8 {
 	return AddRecord
 }
+*/
 
 func (l *Connection) Add(req *AddRequest) error {
 	messageID, ok := l.nextMessageID()

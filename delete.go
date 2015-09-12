@@ -13,9 +13,11 @@ type DeleteRequest struct {
 	Controls []Control
 }
 
+/*
 func (req *DeleteRequest) RecordType() uint8 {
 	return DeleteRecord
 }
+*/
 
 /*
 Simple delete
