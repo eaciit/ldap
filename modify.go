@@ -2,7 +2,7 @@ package ldap
 
 import (
 	"fmt"
-	"github.com/rbns/asn1-ber"
+	"gopkg.in/asn1-ber.v1"
 )
 
 type Mod struct {
@@ -42,19 +42,19 @@ func (req *ModifyRequest) Bytes() []byte {
 }
 
 func encodeModifyRequest(req *ModifyRequest) (p *ber.Packet) {
-	modpacket := ber.Encode(ber.ClassApplication, ber.TypeConstructed, uint8(ApplicationModifyRequest), nil, ApplicationModifyRequest.String())
-	modpacket.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimative, ber.TagOctetString, req.DN, "LDAP DN"))
+	modpacket := ber.Encode(ber.ClassApplication, ber.TypeConstructed, ber.Tag(ApplicationModifyRequest), nil, ApplicationModifyRequest.String())
+	modpacket.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, req.DN, "LDAP DN"))
 	seqOfChanges := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "Changes")
 	for _, mod := range req.Mods {
 		modification := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "Modification")
-		op := ber.NewInteger(ber.ClassUniversal, ber.TypePrimative, ber.TagEnumerated, uint64(mod.ModOperation), "Modify Op")
+		op := ber.NewInteger(ber.ClassUniversal, ber.TypePrimitive, ber.TagEnumerated, uint64(mod.ModOperation), "Modify Op")
 		modification.AppendChild(op)
 		partAttr := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "PartialAttribute")
 
-		partAttr.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimative, ber.TagOctetString, mod.Modification.Name, "AttributeDescription"))
+		partAttr.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, mod.Modification.Name, "AttributeDescription"))
 		valuesSet := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSet, nil, "Attribute Value Set")
 		for _, val := range mod.Modification.Values {
-			value := ber.NewString(ber.ClassUniversal, ber.TypePrimative, ber.TagOctetString, val, "AttributeValue")
+			value := ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, val, "AttributeValue")
 			valuesSet.AppendChild(value)
 		}
 		partAttr.AppendChild(valuesSet)

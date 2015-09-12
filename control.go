@@ -3,7 +3,7 @@ package ldap
 import (
 	"errors"
 	"fmt"
-	"github.com/rbns/asn1-ber"
+	"gopkg.in/asn1-ber.v1"
 	"log"
 )
 
@@ -21,11 +21,21 @@ type ControlString struct {
 }
 
 func NewControlStringFromPacket(p *ber.Packet) (Control, error) {
-	controlType, criticality, value := decodeControlTypeAndCrit(p)
+	controlType, criticality, valuePacket := decodeControlTypeAndCrit(p)
 	c := new(ControlString)
 	c.ControlType = controlType
 	c.Criticality = criticality
-	c.ControlValue = value.ValueString()
+
+	// FIXME: this is hacky, but like the original implementation in the asn1-ber packet previously used
+	switch t := valuePacket.Value.(type) {
+		case string:
+			c.ControlValue = t
+		case []byte:
+			c.ControlValue = string(t)
+		default:
+			c.ControlValue = ""
+	}
+
 	return c, nil
 }
 
@@ -35,12 +45,12 @@ func (c *ControlString) GetControlType() ControlType {
 
 func (c *ControlString) Encode() (p *ber.Packet, err error) {
 	p = ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "Control")
-	p.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimative, ber.TagOctetString, string(c.ControlType), fmt.Sprintf("Control Type (%v)", c.ControlType)))
+	p.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, string(c.ControlType), fmt.Sprintf("Control Type (%v)", c.ControlType)))
 	if c.Criticality {
-		p.AppendChild(ber.NewBoolean(ber.ClassUniversal, ber.TypePrimative, ber.TagBoolean, c.Criticality, "Criticality"))
+		p.AppendChild(ber.NewBoolean(ber.ClassUniversal, ber.TypePrimitive, ber.TagBoolean, c.Criticality, "Criticality"))
 	}
 	if len(c.ControlValue) != 0 {
-		p.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimative, ber.TagOctetString, c.ControlValue, "Control Value"))
+		p.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, c.ControlValue, "Control Value"))
 	}
 	return p, nil
 }
@@ -89,12 +99,12 @@ func (c *ControlPaging) GetControlType() ControlType {
 
 func (c *ControlPaging) Encode() (p *ber.Packet, err error) {
 	p = ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "Control")
-	p.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimative, ber.TagOctetString, string(ControlTypePaging), fmt.Sprintf("Control Type (%v)", ControlTypePaging)))
+	p.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, string(ControlTypePaging), fmt.Sprintf("Control Type (%v)", ControlTypePaging)))
 
-	p2 := ber.Encode(ber.ClassUniversal, ber.TypePrimative, ber.TagOctetString, nil, "Control Value (Paging)")
+	p2 := ber.Encode(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, nil, "Control Value (Paging)")
 	seq := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "Search Control Value")
-	seq.AppendChild(ber.NewInteger(ber.ClassUniversal, ber.TypePrimative, ber.TagInteger, uint64(c.PagingSize), "Paging Size"))
-	cookie := ber.Encode(ber.ClassUniversal, ber.TypePrimative, ber.TagOctetString, nil, "Cookie")
+	seq.AppendChild(ber.NewInteger(ber.ClassUniversal, ber.TypePrimitive, ber.TagInteger, uint64(c.PagingSize), "Paging Size"))
+	cookie := ber.Encode(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, nil, "Cookie")
 	cookie.Value = c.Cookie
 	cookie.Data.Write(c.Cookie)
 	seq.AppendChild(cookie)
@@ -138,19 +148,28 @@ func ReplaceControl(controls []Control, control Control) (oldControl Control) {
 	return control
 }
 
-func decodeControlTypeAndCrit(p *ber.Packet) (controlType ControlType, criticality bool, value *ber.Packet) {
-	controlType = ControlType(p.Children[0].ValueString())
+func decodeControlTypeAndCrit(p *ber.Packet) (controlType ControlType, criticality bool, valuePacket *ber.Packet) {
+	// FIXME: this is hacky, but like the original implementation in the asn1-ber packet previously used
+	switch t := p.Children[0].Value.(type) {
+		case string:
+			controlType = ControlType(t)
+		case []byte:
+			controlType = ControlType(string(t))
+		default:
+			controlType = ControlType("")
+	}
+
 	p.Children[0].Description = fmt.Sprintf("Control Type (%v)", controlType)
 	criticality = false
 	if len(p.Children) == 3 {
 		// at least guard against type assertion failure
 		criticality, _ = p.Children[1].Value.(bool)
 		p.Children[1].Description = "Criticality"
-		value = p.Children[2]
+		valuePacket = p.Children[2]
 	} else {
-		value = p.Children[1]
+		valuePacket = p.Children[1]
 	}
-	value.Description = "Control Value"
+	valuePacket.Description = "Control Value"
 	return
 }
 
@@ -230,13 +249,13 @@ func (c *ControlMatchedValuesRequest) GetControlType() ControlType {
 func (c *ControlMatchedValuesRequest) Encode() (p *ber.Packet, err error) {
 	p = ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "ControlMatchedValuesRequest")
 	p.AppendChild(
-		ber.NewString(ber.ClassUniversal, ber.TypePrimative,
+		ber.NewString(ber.ClassUniversal, ber.TypePrimitive,
 			ber.TagOctetString, string(ControlTypeMatchedValuesRequest),
 			fmt.Sprintf("Control Type (%v)", ControlTypeMatchedValuesRequest)))
 	if c.Criticality {
-		p.AppendChild(ber.NewBoolean(ber.ClassUniversal, ber.TypePrimative, ber.TagBoolean, c.Criticality, "Criticality"))
+		p.AppendChild(ber.NewBoolean(ber.ClassUniversal, ber.TypePrimitive, ber.TagBoolean, c.Criticality, "Criticality"))
 	}
-	octetString := ber.Encode(ber.ClassUniversal, ber.TypePrimative, ber.TagOctetString, nil, "Octet String")
+	octetString := ber.Encode(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, nil, "Octet String")
 	simpleFilterSeq := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "SimpleFilterItem")
 	filterPacket, err := filterParse(c.Filter)
 	if err != nil {
@@ -296,27 +315,27 @@ func (c *ControlServerSideSortRequest) GetControlType() ControlType {
 func (c *ControlServerSideSortRequest) Encode() (p *ber.Packet, err error) {
 	p = ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "ControlServerSideSortRequest")
 	p.AppendChild(
-		ber.NewString(ber.ClassUniversal, ber.TypePrimative,
+		ber.NewString(ber.ClassUniversal, ber.TypePrimitive,
 			ber.TagOctetString, string(ControlTypeServerSideSortRequest),
 			fmt.Sprintf("Control Type (%v)", ControlTypeServerSideSortRequest)))
 	if c.Criticality {
-		p.AppendChild(ber.NewBoolean(ber.ClassUniversal, ber.TypePrimative, ber.TagBoolean, c.Criticality, "Criticality"))
+		p.AppendChild(ber.NewBoolean(ber.ClassUniversal, ber.TypePrimitive, ber.TagBoolean, c.Criticality, "Criticality"))
 	}
-	octetString := ber.Encode(ber.ClassUniversal, ber.TypePrimative, ber.TagOctetString, nil, "Octet String")
+	octetString := ber.Encode(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, nil, "Octet String")
 	seqSortKeyLists := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "SortKeyLists")
 
 	for _, sortKey := range c.SortKeyList {
 		seqKey := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "SortKey")
 		seqKey.AppendChild(
-			ber.NewString(ber.ClassUniversal, ber.TypePrimative, ber.TagOctetString, sortKey.AttributeName, "AttributeDescription"),
+			ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, sortKey.AttributeName, "AttributeDescription"),
 		)
 		if len(sortKey.OrderingRule) > 0 {
 			seqKey.AppendChild(
-				ber.NewString(ber.ClassUniversal, ber.TypePrimative, 0, sortKey.OrderingRule, "OrderingRule"),
+				ber.NewString(ber.ClassUniversal, ber.TypePrimitive, 0, sortKey.OrderingRule, "OrderingRule"),
 			)
 		}
 		seqKey.AppendChild(
-			ber.NewBoolean(ber.ClassUniversal, ber.TypePrimative, 1, sortKey.ReverseOrder, "ReverseOrder"),
+			ber.NewBoolean(ber.ClassUniversal, ber.TypePrimitive, 1, sortKey.ReverseOrder, "ReverseOrder"),
 		)
 		seqSortKeyLists.AppendChild(seqKey)
 	}
@@ -372,28 +391,28 @@ type ControlVlvRequest struct {
 func (c *ControlVlvRequest) Encode() (*ber.Packet, error) {
 	p := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "ControlVlvRequest")
 	p.AppendChild(
-		ber.NewString(ber.ClassUniversal, ber.TypePrimative,
+		ber.NewString(ber.ClassUniversal, ber.TypePrimitive,
 			ber.TagOctetString, string(ControlTypeVlvRequest),
 			fmt.Sprintf("Control Type (%v)", ControlTypeVlvRequest)))
 	if c.Criticality {
-		p.AppendChild(ber.NewBoolean(ber.ClassUniversal, ber.TypePrimative, ber.TagBoolean, c.Criticality, "Criticality"))
+		p.AppendChild(ber.NewBoolean(ber.ClassUniversal, ber.TypePrimitive, ber.TagBoolean, c.Criticality, "Criticality"))
 	}
-	octetString := ber.Encode(ber.ClassUniversal, ber.TypePrimative, ber.TagOctetString, nil, "Octet String")
+	octetString := ber.Encode(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, nil, "Octet String")
 
 	vlvSeq := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "VirtualListViewRequest")
-	beforeCount := ber.NewInteger(ber.ClassUniversal, ber.TypePrimative, ber.TagInteger, uint64(c.BeforeCount), "BeforeCount")
-	afterCount := ber.NewInteger(ber.ClassUniversal, ber.TypePrimative, ber.TagInteger, uint64(c.AfterCount), "AfterCount")
+	beforeCount := ber.NewInteger(ber.ClassUniversal, ber.TypePrimitive, ber.TagInteger, uint64(c.BeforeCount), "BeforeCount")
+	afterCount := ber.NewInteger(ber.ClassUniversal, ber.TypePrimitive, ber.TagInteger, uint64(c.AfterCount), "AfterCount")
 	var target *ber.Packet
 	switch {
 	case c.ByOffset != nil:
 		target = ber.Encode(ber.ClassContext, ber.TypeConstructed, 0, nil, "ByOffset")
-		offset := ber.NewInteger(ber.ClassUniversal, ber.TypePrimative, ber.TagInteger, uint64(c.ByOffset.Offset), "Offset")
-		contentCount := ber.NewInteger(ber.ClassUniversal, ber.TypePrimative, ber.TagInteger, uint64(c.ByOffset.ContentCount), "ContentCount")
+		offset := ber.NewInteger(ber.ClassUniversal, ber.TypePrimitive, ber.TagInteger, uint64(c.ByOffset.Offset), "Offset")
+		contentCount := ber.NewInteger(ber.ClassUniversal, ber.TypePrimitive, ber.TagInteger, uint64(c.ByOffset.ContentCount), "ContentCount")
 		target.AppendChild(offset)
 		target.AppendChild(contentCount)
 	case len(c.GreaterThanOrEqual) > 0:
 		// TODO incorrect for some values, binary?
-		target = ber.NewString(ber.ClassContext, ber.TypePrimative, 1, c.GreaterThanOrEqual, "GreaterThanOrEqual")
+		target = ber.NewString(ber.ClassContext, ber.TypePrimitive, 1, c.GreaterThanOrEqual, "GreaterThanOrEqual")
 	}
 	if target == nil {
 		return nil, newError(ErrorEncoding, "VLV target equal to nil")
@@ -403,7 +422,7 @@ func (c *ControlVlvRequest) Encode() (*ber.Packet, error) {
 	vlvSeq.AppendChild(target)
 
 	if len(c.ContextID) > 0 {
-		contextID := ber.NewString(ber.ClassUniversal, ber.TypePrimative,
+		contextID := ber.NewString(ber.ClassUniversal, ber.TypePrimitive,
 			ber.TagOctetString, string(c.ContextID), "ContextID")
 		vlvSeq.AppendChild(contextID)
 	}
@@ -496,7 +515,17 @@ func NewControlServerSideSortResponse(p *ber.Packet) (Control, error) {
 
 	if len(value.Children) == 2 {
 		value.Children[1].Description = "Attribute Name"
-		c.AttributeName = value.Children[1].ValueString()
+
+		// FIXME: this is hacky, but like the original implementation in the asn1-ber packet previously used
+		switch t := value.Children[1].Value.(type) {
+			case string:
+				c.AttributeName = t
+			case []byte:
+				c.AttributeName = string(t)
+			default:
+				c.AttributeName = ""
+		}
+
 		value.Children[1].Value = c.AttributeName
 	}
 	return c, nil
@@ -593,7 +622,16 @@ func NewControlVlvResponse(p *ber.Packet) (Control, error) {
 
 	if len(value.Children) == 4 {
 		value.Children[3].Description = "ContextID"
-		c.ContextID = value.Children[3].ValueString()
+
+		// FIXME: this is hacky, but like the original implementation in the asn1-ber packet previously used
+		switch t := value.Children[3].Value.(type) {
+			case string:
+				c.ContextID = t
+			case []byte:
+				c.ContextID = string(t)
+			default:
+				c.ContextID = ""
+		}
 	}
 
 	return c, nil

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
-	"github.com/rbns/asn1-ber"
+	"gopkg.in/asn1-ber.v1"
 	"testing"
 )
 

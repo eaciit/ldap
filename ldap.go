@@ -7,10 +7,11 @@ package ldap
 
 import (
 	"fmt"
-	"github.com/rbns/asn1-ber"
+	"gopkg.in/asn1-ber.v1"
 	"io/ioutil"
 	"log"
 	"time"
+	"os"
 )
 
 const (
@@ -86,7 +87,19 @@ func addControlDescriptions(packet *ber.Packet) {
 	packet.Description = "Controls"
 	for _, child := range packet.Children {
 		child.Description = "Control"
-		child.Children[0].Description = fmt.Sprintf("Control Type (%v)", ControlType(child.Children[0].ValueString()))
+
+		// FIXME: this is hacky, but like the original implementation in the asn1-ber packet previously used
+		var descValue string
+		switch t := child.Children[0].Value.(type) {
+			case string:
+				descValue = t
+			case []byte:
+				descValue = string(t)
+			default:
+				descValue = ""
+		}
+
+		child.Children[0].Description = fmt.Sprintf("Control Type (%v)", ControlType(descValue))
 		value := child.Children[1]
 		if len(child.Children) == 3 {
 			child.Children[1].Description = "Criticality"
@@ -94,7 +107,7 @@ func addControlDescriptions(packet *ber.Packet) {
 		}
 		value.Description = "Control Value"
 
-		switch ControlType(child.Children[0].ValueString()) {
+		switch ControlType(descValue) {
 		case ControlTypePaging:
 			value.Description += " (Paging)"
 			if value.Value != nil {
@@ -145,7 +158,7 @@ func DebugBinaryFile(FileName string) error {
 	if err != nil {
 		return err
 	}
-	ber.PrintBytes(file, "")
+	ber.PrintBytes(os.Stdout, file, "")
 	packet := ber.DecodePacket(file)
 	addLDAPDescriptions(packet)
 	ber.PrintPacket(packet)
@@ -178,7 +191,17 @@ func getResultCode(p *ber.Packet) (ResultCode, string) {
 				code = 212
 			}
 			resultCode := ResultCode(code)
-			description = response.Children[2].ValueString()
+
+			// FIXME: this is hacky, but like the original implementation in the asn1-ber packet previously used
+			switch t := response.Children[2].Value.(type) {
+				case string:
+					description = t
+				case []byte:
+					description = string(t)
+				default:
+					description = ""
+			}
+
 			return resultCode, description
 		}
 	}

@@ -2,7 +2,7 @@ package ldap
 
 import (
 	"fmt"
-	"github.com/rbns/asn1-ber"
+	"gopkg.in/asn1-ber.v1"
 	"time"
 )
 
@@ -13,7 +13,7 @@ import (
 func requestBuildPacket(messageID uint64, opPacket *ber.Packet, controls []Control) (p *ber.Packet, err error) {
 
 	p = ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "LDAP Request")
-	p.AppendChild(ber.NewInteger(ber.ClassUniversal, ber.TypePrimative, ber.TagInteger, messageID, "MessageID"))
+	p.AppendChild(ber.NewInteger(ber.ClassUniversal, ber.TypePrimitive, ber.TagInteger, messageID, "MessageID"))
 	p.AppendChild(opPacket)
 
 	if controls != nil && len(controls) > 0 {

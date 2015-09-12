@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"github.com/rbns/asn1-ber"
+	"gopkg.in/asn1-ber.v1"
 	"net"
 	"os"
 	"sync"
@@ -158,8 +158,8 @@ func (l *Connection) startTLS() error {
 }
 
 func encodeTLSRequest() (tlsRequest *ber.Packet) {
-	tlsRequest = ber.Encode(ber.ClassApplication, ber.TypeConstructed, uint8(ApplicationExtendedRequest), nil, "Start TLS")
-	tlsRequest.AppendChild(ber.NewString(ber.ClassContext, ber.TypePrimative, 0, "1.3.6.1.4.1.1466.20037", "TLS Extended Command"))
+	tlsRequest = ber.Encode(ber.ClassApplication, ber.TypeConstructed, ber.Tag(ApplicationExtendedRequest), nil, "Start TLS")
+	tlsRequest.AppendChild(ber.NewString(ber.ClassContext, ber.TypePrimitive, 0, "1.3.6.1.4.1.1466.20037", "TLS Extended Command"))
 	return
 }
 

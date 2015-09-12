@@ -50,7 +50,7 @@ An LDAP search filter is defined in Section 4.5.1 of [RFC4511]
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/rbns/asn1-ber"
+	"gopkg.in/asn1-ber.v1"
 	"regexp"
 )
 
@@ -213,7 +213,7 @@ func filterEncode(opType uint64, value []string) (*ber.Packet, error) {
 		if FilterDebug {
 			fmt.Println(FilterMap[opType])
 		}
-		p = ber.Encode(ber.ClassContext, ber.TypeConstructed, uint8(opType), nil, FilterMap[opType])
+		p = ber.Encode(ber.ClassContext, ber.TypeConstructed, ber.Tag(opType), nil, FilterMap[opType])
 	case FilterItem:
 		if FilterDebug {
 			fmt.Println("FilterItem")
@@ -235,7 +235,7 @@ func encodeItem(attrOpVal []string) (*ber.Packet, error) {
 
 	if op == "=" {
 		if val == "*" { // simple present
-			p := ber.NewString(ber.ClassContext, ber.TypePrimative, FilterPresent, attr, FilterMap[FilterPresent])
+			p := ber.NewString(ber.ClassContext, ber.TypePrimitive, FilterPresent, attr, FilterMap[FilterPresent])
 			return p, nil
 		} else if unescapedWildCardRegex.Match([]byte(val)) {
 			// TODO ADD escaping.
@@ -262,7 +262,7 @@ SubstringFilter ::= SEQUENCE {
 func encodeSubStringMatch(attr, value string) (*ber.Packet, error) {
 	p := ber.Encode(ber.ClassContext, ber.TypeConstructed,
 		FilterSubstrings, nil, FilterMap[FilterSubstrings])
-	p.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimative, ber.TagOctetString, attr, "type"))
+	p.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, attr, "type"))
 	seq := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "substrings")
 
 	pos := 0
@@ -290,14 +290,14 @@ func encodeSubStringMatch(attr, value string) (*ber.Packet, error) {
 			if FilterDebug {
 				fmt.Println("initial : " + matches[1])
 			}
-			seq.AppendChild(ber.NewString(ber.ClassContext, ber.TypePrimative, FilterSubstringsInitial, UnescapeFilterValue(matches[1]), "initial"))
+			seq.AppendChild(ber.NewString(ber.ClassContext, ber.TypePrimitive, FilterSubstringsInitial, UnescapeFilterValue(matches[1]), "initial"))
 		}
 		// past initial but not end
 		if pos > 0 && len(matches) > 1 && len(matches[1]) > 0 {
 			if FilterDebug {
 				fmt.Println("any : " + matches[1])
 			}
-			seq.AppendChild(ber.NewString(ber.ClassContext, ber.TypePrimative, FilterSubstringsAny, UnescapeFilterValue(matches[1]), "any"))
+			seq.AppendChild(ber.NewString(ber.ClassContext, ber.TypePrimitive, FilterSubstringsAny, UnescapeFilterValue(matches[1]), "any"))
 		}
 
 		pos += len(matches[0])
@@ -309,7 +309,7 @@ func encodeSubStringMatch(attr, value string) (*ber.Packet, error) {
 		if FilterDebug {
 			fmt.Println("final : " + value[pos:])
 		}
-		seq.AppendChild(ber.NewString(ber.ClassContext, ber.TypePrimative, FilterSubstringsFinal, UnescapeFilterValue(value[pos:]), "final"))
+		seq.AppendChild(ber.NewString(ber.ClassContext, ber.TypePrimitive, FilterSubstringsFinal, UnescapeFilterValue(value[pos:]), "final"))
 	}
 	p.AppendChild(seq)
 	if FilterDebug {
@@ -342,17 +342,17 @@ func encodeExtensibleMatch(attr, value string) (*ber.Packet, error) {
 		rule := matches[4]
 
 		if len(rule) > 0 {
-			prule := ber.NewString(ber.ClassContext, ber.TypePrimative, TagMatchingRule, rule, "matchingRule")
+			prule := ber.NewString(ber.ClassContext, ber.TypePrimitive, TagMatchingRule, rule, "matchingRule")
 			p.AppendChild(prule)
 		}
 		if len(rtype) > 0 {
-			ptype := ber.NewString(ber.ClassContext, ber.TypePrimative, TagMatchingType, rtype, "type")
+			ptype := ber.NewString(ber.ClassContext, ber.TypePrimitive, TagMatchingType, rtype, "type")
 			p.AppendChild(ptype)
 		}
-		pval := ber.NewString(ber.ClassContext, ber.TypePrimative, TagMatchValue, UnescapeFilterValue(value), "matchValue")
+		pval := ber.NewString(ber.ClassContext, ber.TypePrimitive, TagMatchValue, UnescapeFilterValue(value), "matchValue")
 		p.AppendChild(pval)
 		if len(dn) > 0 {
-			pdn := ber.NewBoolean(ber.ClassContext, ber.TypePrimative, TagMatchDnAttributes, true, "dnAttributes")
+			pdn := ber.NewBoolean(ber.ClassContext, ber.TypePrimitive, TagMatchDnAttributes, true, "dnAttributes")
 			p.AppendChild(pdn)
 		}
 	} else {
@@ -478,12 +478,12 @@ func AttributeValueAssertion(attr, op, value string) (*ber.Packet, error) {
 
 	// AttributeValueAssertion seq of the right op.
 	p := ber.Encode(ber.ClassContext, ber.TypeConstructed,
-		uint8(filterComp), nil, FilterMap[filterComp])
+		ber.Tag(filterComp), nil, FilterMap[filterComp])
 	p.AppendChild(
-		ber.NewString(ber.ClassUniversal, ber.TypePrimative,
+		ber.NewString(ber.ClassUniversal, ber.TypePrimitive,
 			ber.TagOctetString, attr, "Attribute"))
 	p.AppendChild(
-		ber.NewString(ber.ClassUniversal, ber.TypePrimative,
+		ber.NewString(ber.ClassUniversal, ber.TypePrimitive,
 			ber.TagOctetString, UnescapeFilterValue(value), "Value"))
 	return p, nil
 }

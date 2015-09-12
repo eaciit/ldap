@@ -5,7 +5,7 @@
 package ldap
 
 import (
-	"github.com/rbns/asn1-ber"
+	"gopkg.in/asn1-ber.v1"
 )
 
 type DeleteRequest struct {
@@ -28,7 +28,7 @@ func (l *Connection) Delete(delReq *DeleteRequest) (error error) {
 	if !ok {
 		return newError(ErrorClosing, "MessageID channel is closed.")
 	}
-	encodedDelete := ber.NewString(ber.ClassApplication, ber.TypePrimative, uint8(ApplicationDelRequest), delReq.DN, ApplicationDelRequest.String())
+	encodedDelete := ber.NewString(ber.ClassApplication, ber.TypePrimitive, ber.Tag(ApplicationDelRequest), delReq.DN, ApplicationDelRequest.String())
 
 	packet, err := requestBuildPacket(messageID, encodedDelete, delReq.Controls)
 	if err != nil {

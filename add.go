@@ -2,7 +2,7 @@ package ldap
 
 import (
 	"fmt"
-	"github.com/rbns/asn1-ber"
+	"gopkg.in/asn1-ber.v1"
 )
 
 type AddRequest struct {
@@ -47,20 +47,20 @@ func (l *Connection) Add(req *AddRequest) error {
         vals       SET OF value AttributeValue } // vals is not empty
 */
 func encodeAddRequest(addReq *AddRequest) (*ber.Packet, error) {
-	addPacket := ber.Encode(ber.ClassApplication, ber.TypeConstructed, uint8(ApplicationAddRequest), nil, ApplicationAddRequest.String())
-	addPacket.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimative, ber.TagOctetString, addReq.Entry.DN, "LDAP DN"))
+	addPacket := ber.Encode(ber.ClassApplication, ber.TypeConstructed, ber.Tag(ApplicationAddRequest), nil, ApplicationAddRequest.String())
+	addPacket.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, addReq.Entry.DN, "LDAP DN"))
 
 	attributeList := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "AttributeList")
 
 	for _, attr := range addReq.Entry.Attributes {
 		attribute := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "Attribute")
-		attribute.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimative, ber.TagOctetString, attr.Name, "Attribute Desc"))
+		attribute.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, attr.Name, "Attribute Desc"))
 		if len(attr.Values) == 0 {
 			return nil, newError(ErrorEncoding, "attribute "+attr.Name+" had no values.")
 		}
 		valuesSet := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSet, nil, "Attribute Value Set")
 		for _, val := range attr.Values {
-			valuesSet.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimative, ber.TagOctetString, val, "AttributeValue"))
+			valuesSet.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, val, "AttributeValue"))
 		}
 		attribute.AppendChild(valuesSet)
 		attributeList.AppendChild(attribute)

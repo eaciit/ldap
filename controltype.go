@@ -2,7 +2,7 @@ package ldap
 
 import (
 	"errors"
-	"github.com/rbns/asn1-ber"
+	"gopkg.in/asn1-ber.v1"
 )
 
 type ControlType string
