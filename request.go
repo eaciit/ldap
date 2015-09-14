@@ -2,7 +2,7 @@ package ldap
 
 import (
 	"fmt"
-	"github.com/rbns/asn1-ber"
+	"github.com/go-asn1-ber/asn1-ber"
 	"time"
 )
 
@@ -10,10 +10,10 @@ import (
 // opPacket - the operation BER encoded Packet e.g. Search/Modify/Delete/Compare
 // controls - the controls to add to the Request
 // returns the BER encoded LDAP request or an Error
-func requestBuildPacket(messageID uint64, opPacket *ber.Packet, controls []Control) (p *ber.Packet, err error) {
+func requestBuildPacket(messageID int64, opPacket *ber.Packet, controls []Control) (p *ber.Packet, err error) {
 
 	p = ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "LDAP Request")
-	p.AppendChild(ber.NewInteger(ber.ClassUniversal, ber.TypePrimative, ber.TagInteger, messageID, "MessageID"))
+	p.AppendChild(ber.NewInteger(ber.ClassUniversal, ber.TypePrimitive, ber.TagInteger, messageID, "MessageID"))
 	p.AppendChild(opPacket)
 
 	if controls != nil && len(controls) > 0 {
@@ -26,7 +26,7 @@ func requestBuildPacket(messageID uint64, opPacket *ber.Packet, controls []Contr
 	return
 }
 
-func (l *Connection) sendReqRespPacket(messageID uint64, packet *ber.Packet) error {
+func (l *Connection) sendReqRespPacket(messageID int64, packet *ber.Packet) error {
 
 	if l.Debug {
 		ber.PrintPacket(packet)

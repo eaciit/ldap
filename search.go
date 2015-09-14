@@ -3,7 +3,7 @@ package ldap
 import (
 	"errors"
 	"fmt"
-	"github.com/rbns/asn1-ber"
+	"github.com/go-asn1-ber/asn1-ber"
 	"log"
 )
 
@@ -22,7 +22,7 @@ type DiscreteSearchResult struct {
 
 type ConnectionInfo struct {
 	Conn      *Connection
-	MessageID uint64
+	MessageID int64
 }
 
 type SearchResultHandler interface {
@@ -153,13 +153,13 @@ func (l *Connection) Search(searchRequest *SearchRequest) (*SearchResult, error)
 }
 
 func encodeSearchRequest(req *SearchRequest) (*ber.Packet, error) {
-	searchRequest := ber.Encode(ber.ClassApplication, ber.TypeConstructed, uint8(ApplicationSearchRequest), nil, "Search Request")
-	searchRequest.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimative, ber.TagOctetString, req.BaseDN, "Base DN"))
-	searchRequest.AppendChild(ber.NewInteger(ber.ClassUniversal, ber.TypePrimative, ber.TagEnumerated, uint64(req.Scope), "Scope"))
-	searchRequest.AppendChild(ber.NewInteger(ber.ClassUniversal, ber.TypePrimative, ber.TagEnumerated, uint64(req.DerefAliases), "Deref Aliases"))
-	searchRequest.AppendChild(ber.NewInteger(ber.ClassUniversal, ber.TypePrimative, ber.TagInteger, uint64(req.SizeLimit), "Size Limit"))
-	searchRequest.AppendChild(ber.NewInteger(ber.ClassUniversal, ber.TypePrimative, ber.TagInteger, uint64(req.TimeLimit), "Time Limit"))
-	searchRequest.AppendChild(ber.NewBoolean(ber.ClassUniversal, ber.TypePrimative, ber.TagBoolean, req.TypesOnly, "Types Only"))
+	searchRequest := ber.Encode(ber.ClassApplication, ber.TypeConstructed, ber.Tag(ApplicationSearchRequest), nil, "Search Request")
+	searchRequest.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, req.BaseDN, "Base DN"))
+	searchRequest.AppendChild(ber.NewInteger(ber.ClassUniversal, ber.TypePrimitive, ber.TagEnumerated, uint64(req.Scope), "Scope"))
+	searchRequest.AppendChild(ber.NewInteger(ber.ClassUniversal, ber.TypePrimitive, ber.TagEnumerated, uint64(req.DerefAliases), "Deref Aliases"))
+	searchRequest.AppendChild(ber.NewInteger(ber.ClassUniversal, ber.TypePrimitive, ber.TagInteger, uint64(req.SizeLimit), "Size Limit"))
+	searchRequest.AppendChild(ber.NewInteger(ber.ClassUniversal, ber.TypePrimitive, ber.TagInteger, uint64(req.TimeLimit), "Time Limit"))
+	searchRequest.AppendChild(ber.NewBoolean(ber.ClassUniversal, ber.TypePrimitive, ber.TagBoolean, req.TypesOnly, "Types Only"))
 	filterPacket, err := CompileFilter(req.Filter)
 	if err != nil {
 		return nil, err
@@ -167,7 +167,7 @@ func encodeSearchRequest(req *SearchRequest) (*ber.Packet, error) {
 	searchRequest.AppendChild(filterPacket)
 	attributesPacket := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "Attributes")
 	for _, attribute := range req.Attributes {
-		attributesPacket.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimative, ber.TagOctetString, attribute, "Attribute"))
+		attributesPacket.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, attribute, "Attribute"))
 	}
 	searchRequest.AppendChild(attributesPacket)
 	return searchRequest, nil
@@ -188,12 +188,25 @@ func decodeSearchResponse(packet *ber.Packet) (discreteSearchResult *DiscreteSea
 	case SearchResultEntry:
 		discreteSearchResult.SearchResultType = SearchResultEntry
 		entry := new(Entry)
-		entry.DN = packet.Children[1].Children[0].ValueString()
+
+		var ok bool
+		if entry.DN, ok = packet.Children[1].Children[0].Value.(string); !ok {
+			return nil, NewValueMismatchError(packet.Children[1].Children[0].Value)
+		}
+
 		for _, child := range packet.Children[1].Children[1].Children {
 			attr := new(EntryAttribute)
-			attr.Name = child.Children[0].ValueString()
+
+			if attr.Name, ok = child.Children[0].Value.(string); !ok {
+				return nil, NewValueMismatchError(child.Children[0].Value)
+			}
+
 			for _, value := range child.Children[1].Children {
-				attr.Values = append(attr.Values, value.ValueString())
+				if valueString, ok := value.Value.(string); ok {
+					attr.Values = append(attr.Values, valueString)
+				} else {
+					return nil, NewValueMismatchError(value.Value)
+				}
 			}
 			entry.Attributes = append(entry.Attributes, attr)
 		}
@@ -209,10 +222,15 @@ func decodeSearchResponse(packet *ber.Packet) (discreteSearchResult *DiscreteSea
 		if len(packet.Children) == 3 {
 			controls := make([]Control, 0)
 			for _, child := range packet.Children[2].Children {
-				// child.Children[0].ValueString() = control oid
-				decodeFunc, err := ControlType(child.Children[0].ValueString()).function()
+				controlOid, ok := child.Children[0].Value.(string)
+				if !ok {
+					return nil, NewValueMismatchError(child.Children[0].Value)
+				}
+
+				decodeFunc, err := ControlType(controlOid).function()
+
 				if err != nil {
-					log.Println("Couldn't decode Control : " + child.Children[0].ValueString())
+					log.Println("Couldn't decode Control : " + controlOid)
 				} else {
 					c, _ := decodeFunc(child)
 					controls = append(controls, c)
@@ -223,8 +241,12 @@ func decodeSearchResponse(packet *ber.Packet) (discreteSearchResult *DiscreteSea
 		return discreteSearchResult, nil
 	case SearchResultReference:
 		discreteSearchResult.SearchResultType = SearchResultReference
-		for ref := range packet.Children[1].Children {
-			discreteSearchResult.Referrals = append(discreteSearchResult.Referrals, packet.Children[1].Children[ref].ValueString())
+		for ref := range packet.Children[1].Children {			
+			if refString, ok := packet.Children[1].Children[ref].Value.(string); ok {
+				discreteSearchResult.Referrals = append(discreteSearchResult.Referrals, refString)				
+			} else {
+				return nil, NewValueMismatchError(packet.Children[1].Children[ref].Value)
+			}
 		}
 		return discreteSearchResult, nil
 	}

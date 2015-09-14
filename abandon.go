@@ -2,17 +2,17 @@ package ldap
 
 import (
 	"fmt"
-	"github.com/rbns/asn1-ber"
+	"github.com/go-asn1-ber/asn1-ber"
 )
 
 // Will return an error. Normally due to closed connection.
-func (l *Connection) Abandon(abandonMessageID uint64) error {
+func (l *Connection) Abandon(abandonMessageID int64) error {
 	messageID, ok := l.nextMessageID()
 	if !ok {
 		return newError(ErrorClosing, "MessageID channel is closed.")
 	}
 
-	encodedAbandon := ber.NewInteger(ber.ClassApplication, ber.TypePrimative, uint8(ApplicationAbandonRequest), abandonMessageID, ApplicationAbandonRequest.String())
+	encodedAbandon := ber.NewInteger(ber.ClassApplication, ber.TypePrimitive, ber.Tag(ApplicationAbandonRequest), abandonMessageID, ApplicationAbandonRequest.String())
 
 	packet, err := requestBuildPacket(messageID, encodedAbandon, nil)
 	if err != nil {

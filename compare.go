@@ -1,7 +1,7 @@
 package ldap
 
 import (
-	"github.com/rbns/asn1-ber"
+	"github.com/go-asn1-ber/asn1-ber"
 )
 
 /*
@@ -49,8 +49,8 @@ func (l *Connection) Compare(req *CompareRequest) (bool, error) {
 }
 
 func encodeCompareRequest(req *CompareRequest) (*ber.Packet, error) {
-	p := ber.Encode(ber.ClassApplication, ber.TypeConstructed, uint8(ApplicationCompareRequest), nil, ApplicationCompareRequest.String())
-	p.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimative, ber.TagOctetString, req.DN, "LDAP DN"))
+	p := ber.Encode(ber.ClassApplication, ber.TypeConstructed, ber.Tag(ApplicationCompareRequest), nil, ApplicationCompareRequest.String())
+	p.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, req.DN, "LDAP DN"))
 	ava, err := encodeItem([]string{req.Name, "=", req.Value})
 	if err != nil {
 		return nil, err

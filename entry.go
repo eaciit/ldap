@@ -14,9 +14,11 @@ type EntryAttribute struct {
 	Values []string
 }
 
+/*
 func (req *Entry) RecordType() uint8 {
 	return EntryRecord
 }
+*/
 
 func NewEntry(dn string) *Entry {
 	entry := &Entry{DN: dn}

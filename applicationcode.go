@@ -1,7 +1,11 @@
 package ldap
 
+import (
+	"github.com/go-asn1-ber/asn1-ber"
+)
+
 // LDAP Application Codes
-type ApplicationCode uint8
+type ApplicationCode ber.Tag
 
 // go:generate stringer -type=ApplicationCode
 

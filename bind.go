@@ -1,7 +1,7 @@
 package ldap
 
 import (
-	"github.com/rbns/asn1-ber"
+	"github.com/go-asn1-ber/asn1-ber"
 )
 
 /*
@@ -26,9 +26,9 @@ func (l *Connection) Bind(username, password string) error {
 }
 
 func encodeSimpleBindRequest(username, password string) (bindRequest *ber.Packet) {
-	bindRequest = ber.Encode(ber.ClassApplication, ber.TypeConstructed, uint8(ApplicationBindRequest), nil, "Bind Request")
-	bindRequest.AppendChild(ber.NewInteger(ber.ClassUniversal, ber.TypePrimative, ber.TagInteger, 3, "Version"))
-	bindRequest.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimative, ber.TagOctetString, username, "User Name"))
-	bindRequest.AppendChild(ber.NewString(ber.ClassContext, ber.TypePrimative, 0, password, "Password"))
+	bindRequest = ber.Encode(ber.ClassApplication, ber.TypeConstructed, ber.Tag(ApplicationBindRequest), nil, "Bind Request")
+	bindRequest.AppendChild(ber.NewInteger(ber.ClassUniversal, ber.TypePrimitive, ber.TagInteger, 3, "Version"))
+	bindRequest.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, username, "User Name"))
+	bindRequest.AppendChild(ber.NewString(ber.ClassContext, ber.TypePrimitive, 0, password, "Password"))
 	return
 }

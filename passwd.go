@@ -1,7 +1,7 @@
 package ldap
 
 import (
-	"github.com/rbns/asn1-ber"
+	"github.com/go-asn1-ber/asn1-ber"
 )
 
 // PasswordModifyRequest implements the payload and encoding specified in
@@ -14,24 +14,24 @@ type PasswordModifyRequest struct {
 
 // Encode the PasswordModifyRequest into a ber.Packet
 func (r *PasswordModifyRequest) Encode() (*ber.Packet, error) {
-	p := ber.Encode(ber.ClassApplication, ber.TypeConstructed, uint8(ApplicationExtendedRequest), nil, "PasswordModifyRequest")
-	p.AppendChild(ber.NewString(ber.ClassContext, ber.TypePrimative, 0, "1.3.6.1.4.1.4203.1.11.1", "Password Modify Request"))
+	p := ber.Encode(ber.ClassApplication, ber.TypeConstructed, ber.Tag(ApplicationExtendedRequest), nil, "PasswordModifyRequest")
+	p.AppendChild(ber.NewString(ber.ClassContext, ber.TypePrimitive, 0, "1.3.6.1.4.1.4203.1.11.1", "Password Modify Request"))
 
-	octetString := ber.Encode(ber.ClassContext, ber.TypePrimative, 1, nil, "Octet String")
+	octetString := ber.Encode(ber.ClassContext, ber.TypePrimitive, 1, nil, "Octet String")
 	value := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "PasswordModifyRequestValue")
 
 	if r.UserIdentity != "" {
-		userIdentity := ber.NewString(ber.ClassContext, ber.TypePrimative, 0, string(r.UserIdentity), "userIdentity")
+		userIdentity := ber.NewString(ber.ClassContext, ber.TypePrimitive, 0, string(r.UserIdentity), "userIdentity")
 		value.AppendChild(userIdentity)
 	}
 
 	if r.OldPasswd != "" {
-		oldPasswd := ber.NewString(ber.ClassContext, ber.TypePrimative, 1, string(r.OldPasswd), "oldPasswd")
+		oldPasswd := ber.NewString(ber.ClassContext, ber.TypePrimitive, 1, string(r.OldPasswd), "oldPasswd")
 		value.AppendChild(oldPasswd)
 	}
 
 	if r.NewPasswd != "" {
-		newPasswd := ber.NewString(ber.ClassContext, ber.TypePrimative, 2, string(r.NewPasswd), "newPasswd")
+		newPasswd := ber.NewString(ber.ClassContext, ber.TypePrimitive, 2, string(r.NewPasswd), "newPasswd")
 		value.AppendChild(newPasswd)
 	}
 
