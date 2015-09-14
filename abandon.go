@@ -2,11 +2,11 @@ package ldap
 
 import (
 	"fmt"
-	"gopkg.in/asn1-ber.v1"
+	"github.com/go-asn1-ber/asn1-ber"
 )
 
 // Will return an error. Normally due to closed connection.
-func (l *Connection) Abandon(abandonMessageID uint64) error {
+func (l *Connection) Abandon(abandonMessageID int64) error {
 	messageID, ok := l.nextMessageID()
 	if !ok {
 		return newError(ErrorClosing, "MessageID channel is closed.")

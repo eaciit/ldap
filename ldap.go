@@ -7,7 +7,7 @@ package ldap
 
 import (
 	"fmt"
-	"gopkg.in/asn1-ber.v1"
+	"github.com/go-asn1-ber/asn1-ber"
 	"io/ioutil"
 	"log"
 	"time"
@@ -134,8 +134,9 @@ func addRequestDescriptions(packet *ber.Packet) {
 }
 
 func addDefaultLDAPResponseDescriptions(packet *ber.Packet) {
-	code, ok := packet.Children[1].Children[0].Value.(uint64)
+	code, ok := packet.Children[1].Children[0].Value.(int64)
 	if !ok {
+		log.Printf("%T\n", packet.Children[1].Children[0].Value)
 		log.Println("type assertion failed in ldap.go 125")
 		code = 212
 	}
@@ -185,7 +186,7 @@ func getResultCode(p *ber.Packet) (ResultCode, string) {
 	if len(p.Children) >= 2 {
 		response := p.Children[1]
 		if response.ClassType == ber.ClassApplication && response.TagType == ber.TypeConstructed && len(response.Children) == 3 {
-			code, ok := response.Children[0].Value.(uint64)
+			code, ok := response.Children[0].Value.(int64)
 			if !ok {
 				log.Println("type assertion failed in ldap.go 174")
 				code = 212

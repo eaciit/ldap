@@ -3,7 +3,7 @@ package ldap
 import (
 	//"encoding/hex"
 	"fmt"
-	//"gopkg.in/asn1-ber.v1"
+	//"github.com/go-asn1-ber/asn1-ber"
 	"testing"
 	//"bytes"
 )

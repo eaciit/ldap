@@ -3,7 +3,7 @@ package ldap
 import (
 	"errors"
 	"fmt"
-	"gopkg.in/asn1-ber.v1"
+	"github.com/go-asn1-ber/asn1-ber"
 	"log"
 )
 
@@ -22,7 +22,7 @@ type DiscreteSearchResult struct {
 
 type ConnectionInfo struct {
 	Conn      *Connection
-	MessageID uint64
+	MessageID int64
 }
 
 type SearchResultHandler interface {

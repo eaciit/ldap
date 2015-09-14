@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
-	"gopkg.in/asn1-ber.v1"
+	"github.com/go-asn1-ber/asn1-ber"
 	"testing"
 )
 
@@ -37,7 +37,11 @@ type encoded_test struct {
 var encode_filters = []encoded_test{
 	encoded_test{
 		"(|(cn:dn:=people)(cn=xxx*yyy*zzz)(cn=*)(phones>=1))",
-		"a139a90f8202636e830670656f706c658401ffa4150402636e300f8003787878810379797982037a7a7a8702636ea50b040670686f6e6573040131",
+		"a139a90f8202636e830670656f706c65840101a4150402636e300f8003787878810379797982037a7a7a8702636ea50b040670686f6e6573040131",
+// old test, byte 18 differs in that it encodes a boolean value, and everything except 00 is interpreted as true.
+//	encoded_test{
+//		"(|(cn:dn:=people)(cn=xxx*yyy*zzz)(cn=*)(phones>=1))",
+//		"a139a90f8202636e830670656f706c658401ffa4150402636e300f8003787878810379797982037a7a7a8702636ea50b040670686f6e6573040131",
 	},
 }
 
@@ -47,7 +51,7 @@ func TestFilter(t *testing.T) {
 		filter, err := CompileFilter(i.filter_str)
 		if err != nil {
 			t.Errorf("Problem compiling %s - %s", i.filter_str, err)
-		} else if filter.Tag != uint8(i.filter_type) {
+		} else if filter.Tag != ber.Tag(i.filter_type) {
 			t.Errorf("%q Expected %q got %q", i.filter_str, FilterMap[uint64(i.filter_type)], FilterMap[uint64(filter.Tag)])
 		} else {
 			o, err := DecompileFilter(filter)

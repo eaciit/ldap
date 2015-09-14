@@ -4,7 +4,8 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"gopkg.in/asn1-ber.v1"
+	"log"
+	"github.com/go-asn1-ber/asn1-ber"
 	"net"
 	"os"
 	"sync"
@@ -24,11 +25,11 @@ type Connection struct {
 	TlsConfig *tls.Config
 
 	conn               net.Conn
-	chanResults        map[uint64]chan *ber.Packet
+	chanResults        map[int64]chan *ber.Packet
 	lockChanResults    sync.RWMutex
 	chanProcessMessage chan *messagePacket
 	closeLock          sync.RWMutex
-	chanMessageID      chan uint64
+	chanMessageID      chan int64
 	connected          bool
 }
 
@@ -61,9 +62,9 @@ func NewSSLConnection(address string, tlsConfig *tls.Config) *Connection {
 // Connect connects using information in Connection.
 // Connection should be populated with connection information.
 func (l *Connection) Connect() error {
-	l.chanResults = map[uint64]chan *ber.Packet{}
+	l.chanResults = map[int64]chan *ber.Packet{}
 	l.chanProcessMessage = make(chan *messagePacket)
-	l.chanMessageID = make(chan uint64)
+	l.chanMessageID = make(chan int64)
 
 	if l.conn == nil {
 		var c net.Conn
@@ -108,17 +109,17 @@ func (l *Connection) start() {
 // Close closes the connection.
 func (l *Connection) Close() error {
 	if l.Debug {
-		fmt.Println("Starting Close().")
+		log.Println("Starting Close()")
 	}
 	l.sendProcessMessage(&messagePacket{Op: MessageQuit})
 	return nil
 }
 
 // Returns the next available messageID
-func (l *Connection) nextMessageID() (messageID uint64, ok bool) {
+func (l *Connection) nextMessageID() (messageID int64, ok bool) {
 	messageID, ok = <-l.chanMessageID
 	if l.Debug {
-		fmt.Printf("MessageID: %d, ok: %v\n", messageID, ok)
+		log.Printf("MessageID: %d, ok: %v\n", messageID, ok)
 	}
 	return
 }
@@ -172,12 +173,12 @@ const (
 
 type messagePacket struct {
 	Op        int
-	MessageID uint64
+	MessageID int64
 	Packet    *ber.Packet
 	Channel   chan *ber.Packet
 }
 
-func (l *Connection) getNewResultChannel(message_id uint64) (out chan *ber.Packet, err error) {
+func (l *Connection) getNewResultChannel(message_id int64) (out chan *ber.Packet, err error) {
 	// as soon as a channel is requested add to chanResults to never miss
 	// on cleanup.
 	l.lockChanResults.Lock()
@@ -198,9 +199,9 @@ func (l *Connection) getNewResultChannel(message_id uint64) (out chan *ber.Packe
 }
 
 func (l *Connection) sendMessage(p *ber.Packet) (out chan *ber.Packet, err error) {
-	message_id, ok := p.Children[0].Value.(uint64)
+	message_id, ok := p.Children[0].Value.(int64)
 	if !ok {
-		return nil, errors.New(fmt.Sprintf("type assertion uint64 for %v failed!", p.Children[0].Value))
+		return nil, errors.New(fmt.Sprintf("type assertion int64 for %v failed!", p.Children[0].Value))
 	}
 	// sendProcessMessage may not process a message on shutdown
 	// getNewResultChannel adds id/chan to chan results
@@ -209,7 +210,7 @@ func (l *Connection) sendMessage(p *ber.Packet) (out chan *ber.Packet, err error
 		return
 	}
 	if l.Debug {
-		fmt.Printf("sendMessage-> message_id: %d, out: %v\n", message_id, out)
+		log.Printf("sendMessage-> message_id: %d, out: %v\n", message_id, out)
 	}
 
 	message_packet := &messagePacket{Op: MessageRequest, MessageID: message_id, Packet: p, Channel: out}
@@ -229,7 +230,7 @@ func (l *Connection) processMessages() {
 		// will shutdown reader.
 		l.conn.Close()
 	}()
-	var message_id uint64 = 1
+	var message_id int64 = 1
 	var message_packet *messagePacket
 
 	for {
@@ -240,7 +241,7 @@ func (l *Connection) processMessages() {
 			switch message_packet.Op {
 			case MessageQuit:
 				if l.Debug {
-					fmt.Printf("Shutting down\n")
+					log.Printf("Shutting down\n")
 				}
 				return
 			case MessageRequest:
@@ -294,7 +295,7 @@ func (l *Connection) closeAllChannels() {
 	l.chanProcessMessage = nil
 }
 
-func (l *Connection) finishMessage(MessageID uint64) {
+func (l *Connection) finishMessage(MessageID int64) {
 	message_packet := &messagePacket{Op: MessageFinish, MessageID: MessageID}
 	l.sendProcessMessage(message_packet)
 }
@@ -312,7 +313,7 @@ func (l *Connection) reader() {
 
 		addLDAPDescriptions(p)
 
-		message_id, ok := p.Children[0].Value.(uint64)
+		message_id, ok := p.Children[0].Value.(int64)
 		if !ok {
 			// type assertion failed.. maybe we better stop
 			return

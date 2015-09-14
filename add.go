@@ -2,7 +2,8 @@ package ldap
 
 import (
 	"fmt"
-	"gopkg.in/asn1-ber.v1"
+	"github.com/go-asn1-ber/asn1-ber"
+	"log"
 )
 
 type AddRequest struct {
@@ -22,9 +23,18 @@ func (l *Connection) Add(req *AddRequest) error {
 		return newError(ErrorClosing, "messageID channel is closed.")
 	}
 
+	if l.Debug {
+		log.Println("sdfsadfsdf")
+	}
+
+
 	encodedAdd, err := encodeAddRequest(req)
 	if err != nil {
 		return err
+	}
+
+	if l.Debug {
+		log.Println("encoded add request:", encodedAdd)
 	}
 
 	packet, err := requestBuildPacket(messageID, encodedAdd, req.Controls)
