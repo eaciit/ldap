@@ -15,7 +15,8 @@ var dntests = []string{
 `gathsah#`,			`gathsah\#`,
 `#bothtag#`,			`\#bothtag\#`,
 `#hashnspace `,			`\#hashnspace\ `,
-` spacenhash#`,			`\ spacenhash\#`}
+` spacenhash#`,			`\ spacenhash\#`,
+``,``}
 
 var filtertests = []string{
 `unescaped`,		`unescaped`,
@@ -23,7 +24,8 @@ var filtertests = []string{
 `*_*`,				`\2a_\2a`,
 `sunn o)))`,		`sunn o\29\29\29`,
 `(((o nnus`,		`\28\28\28o nnus`,
-"\000\\*()",		`\00\5c\2a\28\29`}
+"\000\\*()",		`\00\5c\2a\28\29`,
+``,``}
 
 func TestDnReplacer(t *testing.T) {
 	for i := 0; i < len(dntests); i += 2 {

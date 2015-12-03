@@ -7,6 +7,10 @@ import (
 // DnReplace replaces runes in AssertionValues as defined in 
 // RFC 4514 [https://www.ietf.org/rfc/rfc4514.txt]
 func DnReplace(value string) string {
+	if value == "" {
+		return ""
+	}
+
 	r := strings.NewReplacer(dnReplacements...)
 	value = r.Replace(value)
 	
