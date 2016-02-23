@@ -185,25 +185,42 @@ func getResultCode(p *ber.Packet) (ResultCode, string) {
 	var description string
 	if len(p.Children) >= 2 {
 		response := p.Children[1]
-		if response.ClassType == ber.ClassApplication && response.TagType == ber.TypeConstructed && len(response.Children) == 3 {
-			code, ok := response.Children[0].Value.(int64)
-			if !ok {
-				log.Println("type assertion failed in ldap.go 174")
-				code = 212
-			}
-			resultCode := ResultCode(code)
+		if response.ClassType == ber.ClassApplication && response.TagType == ber.TypeConstructed {
+			switch {
+			case len(response.Children) == 3:
+				code, ok := response.Children[0].Value.(int64)
+				if !ok {
+					log.Println("type assertion failed in ldap.go 174")
+					code = 212
+				}
+				resultCode := ResultCode(code)
 
-			// FIXME: this is hacky, but like the original implementation in the asn1-ber packet previously used
-			switch t := response.Children[2].Value.(type) {
+				switch t := response.Children[2].Value.(type) {
 				case string:
 					description = t
 				case []byte:
 					description = string(t)
 				default:
 					description = ""
-			}
+				}
 
-			return resultCode, description
+				return resultCode, description
+
+			case len(response.Children) == 4 && ResultCode(response.Children[0].Value.(uint64)) == ResultReferral:
+				response = response.Children[3]
+				if response.ClassType == ber.ClassContext && response.TagType == ber.TypeConstructed && len(response.Children) == 1 {
+					switch t := response.Children[0].Value.(type) {
+					case string:
+						description = t
+					case []byte:
+						description = string(t)
+					default:
+						description = ""
+					}
+				
+					return ResultReferral, description
+				}
+			}
 		}
 	}
 
