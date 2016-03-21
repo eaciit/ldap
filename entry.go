@@ -58,9 +58,8 @@ func (e *Entry) AddAttributeValues(attributeName string, values []string) {
 }
 
 func (e *Entry) GetAttributeValues(attributeName string) []string {
-	attributeName = strings.ToLower(attributeName)
 	for _, attr := range e.Attributes {
-		if strings.ToLower(attr.Name) == attributeName {
+		if strings.EqualFold(attr.Name, attributeName) {
 			return attr.Values
 		}
 	}
@@ -78,10 +77,9 @@ func (e *Entry) GetAttributeValue(attributeName string) string {
 	return values[0]
 }
 
-func (e *Entry) GetAttributeIndex(Attribute string) int {
-	Attribute = strings.ToLower(Attribute)
+func (e *Entry) GetAttributeIndex(attributeName string) int {
 	for i, attr := range e.Attributes {
-		if strings.ToLower(attr.Name) == Attribute {
+		if strings.EqualFold(attr.Name, attributeName) {
 			return i
 		}
 	}
