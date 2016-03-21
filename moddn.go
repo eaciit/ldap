@@ -44,8 +44,8 @@ func encodeModDnRequest(req *ModDnRequest) (p *ber.Packet) {
 	p.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, req.NewRDN, "NewRDN"))
 	p.AppendChild(ber.NewBoolean(ber.ClassUniversal, ber.TypePrimitive, ber.TagBoolean, req.DeleteOldDn, "deleteoldrdn"))
 	if len(req.NewSuperiorDN) > 0 {
-		p.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive,
-			ber.TagOctetString, req.NewSuperiorDN, "NewSuperiorDN"))
+		p.AppendChild(ber.NewString(ber.ClassContext, ber.TypePrimitive,
+			ber.TagEOC, req.NewSuperiorDN, "NewSuperiorDN"))
 	}
 	return
 }
