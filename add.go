@@ -2,7 +2,7 @@ package ldap
 
 import (
 	"fmt"
-	"github.com/go-asn1-ber/asn1-ber"
+	"github.com/eaciit/asn1-ber"
 	"log"
 )
 
@@ -26,7 +26,6 @@ func (l *Connection) Add(req *AddRequest) error {
 	if l.Debug {
 		log.Println("sdfsadfsdf")
 	}
-
 
 	encodedAdd, err := encodeAddRequest(req)
 	if err != nil {

@@ -2,7 +2,7 @@ package ldap
 
 import (
 	"fmt"
-	"github.com/go-asn1-ber/asn1-ber"
+	"github.com/eaciit/asn1-ber"
 )
 
 type Mod struct {
@@ -13,10 +13,10 @@ type Mod struct {
 // LDAP modify request [https://tools.ietf.org/html/rfc4511#section-4.6]
 type ModifyRequest struct {
 	// DN of entry that is modified
-	DN       string
-	
+	DN string
+
 	// Changes
-	Mods     []Mod
+	Mods []Mod
 
 	// Server controls
 	Controls []Control

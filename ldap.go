@@ -7,11 +7,11 @@ package ldap
 
 import (
 	"fmt"
-	"github.com/go-asn1-ber/asn1-ber"
+	"github.com/eaciit/asn1-ber"
 	"io/ioutil"
 	"log"
-	"time"
 	"os"
+	"time"
 )
 
 const (
@@ -91,12 +91,12 @@ func addControlDescriptions(packet *ber.Packet) {
 		// FIXME: this is hacky, but like the original implementation in the asn1-ber packet previously used
 		var descValue string
 		switch t := child.Children[0].Value.(type) {
-			case string:
-				descValue = t
-			case []byte:
-				descValue = string(t)
-			default:
-				descValue = ""
+		case string:
+			descValue = t
+		case []byte:
+			descValue = string(t)
+		default:
+			descValue = ""
 		}
 
 		child.Children[0].Description = fmt.Sprintf("Control Type (%v)", ControlType(descValue))
@@ -217,7 +217,7 @@ func getResultCode(p *ber.Packet) (ResultCode, string) {
 					default:
 						description = ""
 					}
-				
+
 					return ResultReferral, description
 				}
 			}

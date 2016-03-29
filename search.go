@@ -3,7 +3,7 @@ package ldap
 import (
 	"errors"
 	"fmt"
-	"github.com/go-asn1-ber/asn1-ber"
+	"github.com/eaciit/asn1-ber"
 	"log"
 )
 
@@ -241,9 +241,9 @@ func decodeSearchResponse(packet *ber.Packet) (discreteSearchResult *DiscreteSea
 		return discreteSearchResult, nil
 	case SearchResultReference:
 		discreteSearchResult.SearchResultType = SearchResultReference
-		for ref := range packet.Children[1].Children {			
+		for ref := range packet.Children[1].Children {
 			if refString, ok := packet.Children[1].Children[ref].Value.(string); ok {
-				discreteSearchResult.Referrals = append(discreteSearchResult.Referrals, refString)				
+				discreteSearchResult.Referrals = append(discreteSearchResult.Referrals, refString)
 			} else {
 				return nil, NewValueMismatchError(packet.Children[1].Children[ref].Value)
 			}

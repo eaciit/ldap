@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
-	"github.com/go-asn1-ber/asn1-ber"
+	"github.com/eaciit/asn1-ber"
 	"testing"
 )
 
@@ -38,10 +38,10 @@ var encode_filters = []encoded_test{
 	encoded_test{
 		"(|(cn:dn:=people)(cn=xxx*yyy*zzz)(cn=*)(phones>=1))",
 		"a139a90f8202636e830670656f706c65840101a4150402636e300f8003787878810379797982037a7a7a8702636ea50b040670686f6e6573040131",
-// old test, byte 18 differs in that it encodes a boolean value, and everything except 00 is interpreted as true.
-//	encoded_test{
-//		"(|(cn:dn:=people)(cn=xxx*yyy*zzz)(cn=*)(phones>=1))",
-//		"a139a90f8202636e830670656f706c658401ffa4150402636e300f8003787878810379797982037a7a7a8702636ea50b040670686f6e6573040131",
+		// old test, byte 18 differs in that it encodes a boolean value, and everything except 00 is interpreted as true.
+		//	encoded_test{
+		//		"(|(cn:dn:=people)(cn=xxx*yyy*zzz)(cn=*)(phones>=1))",
+		//		"a139a90f8202636e830670656f706c658401ffa4150402636e300f8003787878810379797982037a7a7a8702636ea50b040670686f6e6573040131",
 	},
 }
 

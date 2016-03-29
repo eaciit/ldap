@@ -3,7 +3,7 @@ package ldap
 import (
 	"errors"
 	"fmt"
-	"github.com/go-asn1-ber/asn1-ber"
+	"github.com/eaciit/asn1-ber"
 	"log"
 )
 
@@ -28,12 +28,12 @@ func NewControlStringFromPacket(p *ber.Packet) (Control, error) {
 
 	// FIXME: this is hacky, but like the original implementation in the asn1-ber packet previously used
 	switch t := valuePacket.Value.(type) {
-		case string:
-			c.ControlValue = t
-		case []byte:
-			c.ControlValue = string(t)
-		default:
-			c.ControlValue = ""
+	case string:
+		c.ControlValue = t
+	case []byte:
+		c.ControlValue = string(t)
+	default:
+		c.ControlValue = ""
 	}
 
 	return c, nil
@@ -151,12 +151,12 @@ func ReplaceControl(controls []Control, control Control) (oldControl Control) {
 func decodeControlTypeAndCrit(p *ber.Packet) (controlType ControlType, criticality bool, valuePacket *ber.Packet) {
 	// FIXME: this is hacky, but like the original implementation in the asn1-ber packet previously used
 	switch t := p.Children[0].Value.(type) {
-		case string:
-			controlType = ControlType(t)
-		case []byte:
-			controlType = ControlType(string(t))
-		default:
-			controlType = ControlType("")
+	case string:
+		controlType = ControlType(t)
+	case []byte:
+		controlType = ControlType(string(t))
+	default:
+		controlType = ControlType("")
 	}
 
 	p.Children[0].Description = fmt.Sprintf("Control Type (%v)", controlType)
@@ -518,12 +518,12 @@ func NewControlServerSideSortResponse(p *ber.Packet) (Control, error) {
 
 		// FIXME: this is hacky, but like the original implementation in the asn1-ber packet previously used
 		switch t := value.Children[1].Value.(type) {
-			case string:
-				c.AttributeName = t
-			case []byte:
-				c.AttributeName = string(t)
-			default:
-				c.AttributeName = ""
+		case string:
+			c.AttributeName = t
+		case []byte:
+			c.AttributeName = string(t)
+		default:
+			c.AttributeName = ""
 		}
 
 		value.Children[1].Value = c.AttributeName
@@ -625,12 +625,12 @@ func NewControlVlvResponse(p *ber.Packet) (Control, error) {
 
 		// FIXME: this is hacky, but like the original implementation in the asn1-ber packet previously used
 		switch t := value.Children[3].Value.(type) {
-			case string:
-				c.ContextID = t
-			case []byte:
-				c.ContextID = string(t)
-			default:
-				c.ContextID = ""
+		case string:
+			c.ContextID = t
+		case []byte:
+			c.ContextID = string(t)
+		default:
+			c.ContextID = ""
 		}
 	}
 
