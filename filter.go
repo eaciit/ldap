@@ -50,7 +50,7 @@ An LDAP search filter is defined in Section 4.5.1 of [RFC4511]
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/go-asn1-ber/asn1-ber"
+	"github.com/eaciit/asn1-ber"
 	"regexp"
 )
 

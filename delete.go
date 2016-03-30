@@ -5,7 +5,7 @@
 package ldap
 
 import (
-	"github.com/go-asn1-ber/asn1-ber"
+	"github.com/eaciit/asn1-ber"
 )
 
 type DeleteRequest struct {

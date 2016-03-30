@@ -1,7 +1,7 @@
 package ldap
 
 import (
-	"github.com/go-asn1-ber/asn1-ber"
+	"github.com/eaciit/asn1-ber"
 )
 
 //ModifyDNRequest ::= [APPLICATION 12] SEQUENCE {
