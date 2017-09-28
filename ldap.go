@@ -7,11 +7,13 @@ package ldap
 
 import (
 	"fmt"
-	"github.com/eaciit/asn1-ber"
 	"io/ioutil"
 	"log"
 	"os"
 	"time"
+
+	"github.com/eaciit/asn1-ber"
+	"github.com/eaciit/toolkit"
 )
 
 const (
@@ -206,7 +208,7 @@ func getResultCode(p *ber.Packet) (ResultCode, string) {
 
 				return resultCode, description
 
-			case len(response.Children) == 4 && ResultCode(response.Children[0].Value.(uint64)) == ResultReferral:
+			case len(response.Children) == 4 && ResultCode(toolkit.ToInt(response.Children[0].Value, toolkit.RoundingAuto)) == ResultReferral:
 				response = response.Children[3]
 				if response.ClassType == ber.ClassContext && response.TagType == ber.TypeConstructed && len(response.Children) == 1 {
 					switch t := response.Children[0].Value.(type) {
