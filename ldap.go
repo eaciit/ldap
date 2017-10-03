@@ -7,11 +7,13 @@ package ldap
 
 import (
 	"fmt"
-	"github.com/eaciit/asn1-ber"
 	"io/ioutil"
 	"log"
 	"os"
 	"time"
+
+	"github.com/eaciit/asn1-ber"
+	"github.com/eaciit/toolkit"
 )
 
 const (
@@ -180,51 +182,22 @@ func newError(resultCode ResultCode, sText string) error {
 	return &Error{ResultCode: resultCode, sText: sText}
 }
 
-func getResultCode(p *ber.Packet) (ResultCode, string) {
-	var code ResultCode
-	var description string
-	if len(p.Children) >= 2 {
-		response := p.Children[1]
-		if response.ClassType == ber.ClassApplication && response.TagType == ber.TypeConstructed {
-			switch {
-			case len(response.Children) == 3:
-				code, ok := response.Children[0].Value.(int64)
-				if !ok {
-					log.Println("type assertion failed in ldap.go 174")
-					code = 212
-				}
-				resultCode := ResultCode(code)
+func getResultCode(packet *ber.Packet) (ResultCode, string) {
+	if packet == nil {
+		return ErrorNetwork, "Empty packet"
+	} else if len(packet.Children) >= 2 {
+		response := packet.Children[1]
+		if response == nil {
+			return ErrorNetwork, "Empty response in packet"
+		}
 
-				switch t := response.Children[2].Value.(type) {
-				case string:
-					description = t
-				case []byte:
-					description = string(t)
-				default:
-					description = ""
-				}
-
-				return resultCode, description
-
-			case len(response.Children) == 4 && ResultCode(response.Children[0].Value.(uint64)) == ResultReferral:
-				response = response.Children[3]
-				if response.ClassType == ber.ClassContext && response.TagType == ber.TypeConstructed && len(response.Children) == 1 {
-					switch t := response.Children[0].Value.(type) {
-					case string:
-						description = t
-					case []byte:
-						description = string(t)
-					default:
-						description = ""
-					}
-
-					return ResultReferral, description
-				}
-			}
+		if response.ClassType == ber.ClassApplication && response.TagType == ber.TypeConstructed && len(response.Children) >= 3 {
+			// Children[1].Children[2] is the diagnosticMessage which is guaranteed to exist as seen here: https://tools.ietf.org/html/rfc4511#section-4.1.9
+			resultCode := toolkit.ToInt(response.Children[0].Value, toolkit.RoundingAuto)
+			message := toolkit.ToString(response.Children[2].Value)
+			return ResultCode(resultCode), message
 		}
 	}
 
-	code = ErrorNetwork
-	description = "Invalid packet format"
-	return code, description
+	return ErrorNetwork, "Invalid packet format"
 }
